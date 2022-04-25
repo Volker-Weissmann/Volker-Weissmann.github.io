@@ -73,7 +73,7 @@ write than most other languages." />
                         <p>A faster alternative would be C/C++. While it
                         is definitely fast enough, its poor ergonomics
                         would inflate the time needed for writing the
-                        code. Also, I hate C++ with a passion, but this
+                        code. Also, C++ has its own problems, but this
                         is a story for another post.</p>
                         <p>Rust is essentially C/C++, but without their
                         ugliness. But Rust is quite a verbose language,
@@ -190,14 +190,14 @@ search: AbstractDiffEqArray
                         specific datatype instead of multiple datatypes.
                         But this is not without disadvantages: Let’s say
                         you want to know the methods to modify a
-                        <code>Dict</code>. In <a
-                        href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">a
-                        proper language</a> you can find those methods
-                        in the documentation of the <code>Dict</code>
-                        datatype. But if you execute
-                        <code>apropos("Dict")</code> in Julia you find
-                        both functions like <code>Base.mergewith</code>,
-                        but also stuff like <code>Base.setenv</code> or
+                        <code>Dict</code>. In e.g. <a
+                        href="https://doc.rust-lang.org/std/collections/struct.HashMap.html">rust</a>
+                        you can find those methods in the documentation
+                        of the <code>Dict</code> datatype. But if you
+                        execute <code>apropos("Dict")</code> in Julia
+                        you find both functions like
+                        <code>Base.mergewith</code>, but also stuff like
+                        <code>Base.setenv</code> or
                         <code>Base.Cmd</code>.</p>
                         <h2
                         id="hard-to-debug-due-to-bad-error-messages"><a
@@ -212,8 +212,8 @@ search: AbstractDiffEqArray
                         languages, even those I spent less time learning
                         on, I hade trouble writing certain code or
                         debugging certain errors that I would consider
-                        extremely basic.</strong> And I don’t mean that
-                        my solution looked unelegant, like the code of a
+                        very basic.</strong> And I don’t mean that my
+                        solution looked unelegant, like the code of a
                         beginner. No, I was literally not able to write
                         certain <em>basic</em> things myself.</p>
                         <p>An example can be found <a
@@ -351,8 +351,8 @@ search: AbstractDiffEqArray
                         <h2 id="conclusion"><a
                         href="#conclusion">Conclusion</a></h2>
                         <p>Hot loops in Julia are quite fast, but you
-                        have to wait <em>forever</em> for your program
-                        to start up.</p>
+                        have to wait quite long for your program to
+                        start up.</p>
                         <p>The Julia ecosystem is quite immature and
                         buggy, at least compared to rust or python.</p>
                         <p>Julia has really nice, short syntax for
@@ -361,14 +361,13 @@ search: AbstractDiffEqArray
                         shorter. The problem is that this short code
                         will take longer to write, because dynamic
                         typing, bad reference documentation makes
-                        writing and debugging Julia code extremely
-                        hard.</p>
+                        writing and debugging Julia code harder.</p>
                         <p>After a while, I decided to rewrite parts of
                         my code in Rust. Rust code is much more verbose
                         and I had to implement basic numerical methods
                         since rust has few numeric libraries, so the
                         code was much longer. However, it was still
-                        faster to write, because rust has a proper type
+                        faster to write, because rust has a better type
                         system, reference documentation, error messages
                         and a mature ecosystem. My Rust code greatly
                         outperformed the Julia code.</p>
