@@ -1,0 +1,317 @@
+<!DOCTYPE html><html xmlns=http://www.w3.org/1999/xhtml lang xml:lang> <head><meta charset=utf-8><meta name=generator content=pandoc><meta name=viewport content="width=device-width, initial-scale=1.0, user-scalable=yes"><meta name=keywords content="Software Engineering"><title>Failing Early for Nicer Error Messages</title><style>
+    html {
+      line-height: 1.5;
+      font-family: Georgia, serif;
+      font-size: 20px;
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 1em;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    div.abstract {
+      margin: 2em 2em 2em 2em;
+      text-align: left;
+      font-size: 85%;
+    }
+    div.abstract-title {
+      font-weight: bold;
+      text-align: center;
+      padding: 0;
+      margin-bottom: 0.5em;
+    }
+    code {
+      font-family: Menlo, Monaco, 'Lucida Console', Consolas, monospace;
+      font-size: 85%;
+      margin: 0;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style><!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]--></head> <body> <header id=title-block-header> <h1 class=title>Failing Early for Nicer Error Messages</h1> <p class=date>2022-04-30T20:50:13+02:00</p> <div class=abstract> <div class=abstract-title>Abstract</div> I explain how failing early produces nicer error messages - A general principle in software engineering. Dynamic typing and C++ templates are used as negative examples, while static typing and Rust generics are used as positive examples. Every experienced programmer probably already knows this, but I still wrote this article, because I wish I knew this earlier. </div> </header> <p>todo: image centering and shrink to fit</p> <h2 id=the-principle>The principle</h2> <p>Let us say, we have a chain of function calls, or more generally speaking a chain of code parts that give some command to the next part of the chain.</p> <figure> <img src=code-chain-1.svg alt="Chain of code parts. Part 0 gives command 1 to part 1, which gives command 2 to part 2, …"> <figcaption aria-hidden=true>Chain of code parts. Part 0 gives command 1 to part 1, which gives command 2 to part 2, …</figcaption> </figure> <p>Now let us assume that some part of the chain, w.l.o.g. part 1 contains a bug. This bug makes part 1 give a command to part 2 that is impossible to fulfill. This command makes part 2 gives another, different but also impossible command to part 3. This command makes in turn part 3 give another, different and impossible command to part 4. Part 4 then realizes that it was given an impossible command, prints an error message and aborts. <img src=code-chain-2.svg alt="Chain of code parts. Unlike the previous image, this time part 1 has a bug and therefore gives an impossible command to part 2, which gives an impossible command to part 3, which gives an impossible command to part 4, which aborts."></p> <!-- Here, I put two parts between the part that has the bug and the part that aborts. In general, there is a chain with `N` parts between bug and aborting.  --> <p>My argument is that the shorter the chain between giving an impossible command and realizing the command is impossible is, the easier the debugging will be. There are two reasons for this: - We know that that every part of the chain that comes after the abort, is not the buggy part. Here, we know that part 5 is not the problem, if part 3 would have aborted, we would have also known that part 4 is not the problem. - Since each part of the chain after the bug, here part 2 and part 3, transforms an impossible command into another impossible command, the command that will be detected as impossible, here command 4, will be quite distant from the initial problem, i.e. that part 1 gives command 2. In other words, assertions are a good thing.</p> <h2 id=case-study-1-dynamic-typing-vs-static-typing>Case Study 1: Dynamic Typing vs Static Typing</h2> <!-- Dynamically typed languages are an example of late failure, in contrast to statically typed languages which are an example of early failure. --> Statically typed languages are an example of early failure, in contrast to dynamically typed languages which are an example of late failure. Consider this C++ code. <code>{.c++ .numberLines} class MyType { public: void member() {} }; void part3(MyType b) { b.member(); } void part2(MyType a) { part3(a); } void part1() { part2(123); } void part0() { part1(); } int main() { part0(); }</code> The bug in this code, is in <code>part1</code>: It should call <code>part2</code> with a variable of type <code>MyType</code>, but it calls it with an integer. Because C++ is a statically typed language, <code>part2</code> checks if it was given an impossible command i.e. an argument of the wrong type and the error message correctly pinpoints the problem: <div class=sourceCode> <pre class="sourceCode txt"><code class="sourceCode default"><b>main.cpp:7:16: </b><font color=#C01C28><b>error: </b></font><b>no matching function for call to &apos;part2&apos;</b>
+void part1() { part2(123); }
+<font color=#26A269><b>               ^~~~~</b></font>
+<b>main.cpp:6:6: </b><font color=#171421><b>note: </b></font>candidate function not viable: no known conversion from &apos;int&apos; to &apos;MyType&apos; for 1st argument
+void part2(MyType a) { part3(a); }
+<font color=#26A269><b>     ^</b></font>
+</code></pre> </div> <p>Just from looking at this error message, we can see that the bug has to be in the body of <code>part1</code> or the signature of <code>part2</code>. In contrast, if we run this Python code:</p> <div class=sourceCode id=cb1><pre class="sourceCode numberSource python numberLines"><code class="sourceCode python"><span id=cb1-1><a href=#cb1-1></a><span class=kw>class</span> MyType:</span>
+<span id=cb1-2><a href=#cb1-2></a>    <span class=kw>def</span> member(<span class=va>self</span>):</span>
+<span id=cb1-3><a href=#cb1-3></a>        <span class=cf>pass</span></span>
+<span id=cb1-4><a href=#cb1-4></a><span class=kw>def</span> part3(b):</span>
+<span id=cb1-5><a href=#cb1-5></a>    b.member()</span>
+<span id=cb1-6><a href=#cb1-6></a><span class=kw>def</span> part2(a):</span>
+<span id=cb1-7><a href=#cb1-7></a>    part3(a)</span>
+<span id=cb1-8><a href=#cb1-8></a><span class=kw>def</span> part1():</span>
+<span id=cb1-9><a href=#cb1-9></a>    part2(<span class=dv>123</span>)</span>
+<span id=cb1-10><a href=#cb1-10></a><span class=kw>def</span> part0():</span>
+<span id=cb1-11><a href=#cb1-11></a>    part1()</span>
+<span id=cb1-12><a href=#cb1-12></a>part0()</span></code></pre></div> <p>It fails with</p> <pre><code>Traceback (most recent call last):
+  line 12, in &lt;module&gt;
+    part0()
+  line 11, in part0
+    part1()
+  line 9, in part1
+    part2(123)
+  line 7, in part2
+    part3(a)
+  line 5, in part3
+    b.member()
+AttributeError: &#39;int&#39; object has no attribute &#39;member&#39;</code></pre> <p>Because Python is a dynamically typed, the error message only says that the bug is either in <code>part0</code>, <code>part1</code>, <code>part2</code> or <code>part3</code>. Much less specific than the C++ version, much more work in finding the bug. In a statically typed language, compilation fails as soon as a type is wrong, i.e. it fails early. In a dynamically typed language it only fails when you actually try to do something with this type that you cannot, i.e. it fails late.</p> <p>That is why statically typed languages are easier to debug and therefore better than dynamically typed languages.</p> <p><em>Running away from the angry mob.</em></p> <h2 id=case-study-2-c-templates-vs-rust-generics>Case Study 2: C++ Templates vs Rust Generics</h2> The statically typed language C++ was a positive example in the previous chapter, but it will be a negative example in this one. Once we add a template to our previous C++ code, i.e. <code>{.c++ .numberLines} class MyType { public: void member() {} }; template &lt;typename T&gt; void part3(T b) { b.member(); } template &lt;typename T&gt; void part2(T a) { part3(a); } void part1() { part2(123); } void part0() { part1(); } int main() { part0(); }</code> the error message becomes: <div class=sourceCode> <pre class="sourceCode txt"><code class="sourceCode default"><b>main.cpp:5:42: </b><font color=#C01C28><b>error: </b></font><b>member reference base type &apos;int&apos; is not a structure or union</b>
+template &lt;typename T&gt; void part3(T b) { b.member(); }
+<font color=#26A269><b>                                        ~^~~~~~~</b></font>
+<b>main.cpp:6:41: </b><font color=#171421><b>note: </b></font>in instantiation of function template specialization &apos;part3&lt;int&gt;&apos; requested here
+template &lt;typename T&gt; void part2(T a) { part3(a); }
+<font color=#26A269><b>                                        ^</b></font>
+<b>main.cpp:7:16: </b><font color=#171421><b>note: </b></font>in instantiation of function template specialization &apos;part2&lt;int&gt;&apos; requested here
+void part1() { part2(123); }
+<font color=#26A269><b>               ^</b></font>
+</code></pre> </div> <p>Clang is only able to see that the bug has to be in <code>part1</code>, <code>part2</code> or <code>part3</code>. Let us compare this to the best programming language, Rust:</p> <div class=sourceCode id=cb3><pre class="sourceCode numberSource rust numberLines"><code class="sourceCode rust"><span id=cb3-1><a href=#cb3-1></a><span class=kw>trait</span> MyPoly <span class=op>{</span></span>
+<span id=cb3-2><a href=#cb3-2></a>    <span class=kw>fn</span> member(<span class=op>&amp;</span><span class=kw>self</span>)<span class=op>;</span></span>
+<span id=cb3-3><a href=#cb3-3></a><span class=op>}</span></span>
+<span id=cb3-4><a href=#cb3-4></a><span class=kw>fn</span> part3<span class=op>&lt;</span>T<span class=op>:</span> MyPoly<span class=op>&gt;</span>(b<span class=op>:</span> T) <span class=op>{</span></span>
+<span id=cb3-5><a href=#cb3-5></a>    b<span class=op>.</span>member()<span class=op>;</span></span>
+<span id=cb3-6><a href=#cb3-6></a><span class=op>}</span></span>
+<span id=cb3-7><a href=#cb3-7></a><span class=kw>fn</span> part2<span class=op>&lt;</span>T<span class=op>:</span>MyPoly<span class=op>&gt;</span>(a<span class=op>:</span> T) <span class=op>{</span></span>
+<span id=cb3-8><a href=#cb3-8></a>    part3(a)<span class=op>;</span></span>
+<span id=cb3-9><a href=#cb3-9></a><span class=op>}</span></span>
+<span id=cb3-10><a href=#cb3-10></a><span class=kw>fn</span> part1() <span class=op>{</span></span>
+<span id=cb3-11><a href=#cb3-11></a>    part2(<span class=dv>123</span>)<span class=op>;</span></span>
+<span id=cb3-12><a href=#cb3-12></a><span class=op>}</span></span>
+<span id=cb3-13><a href=#cb3-13></a><span class=kw>fn</span> part0() <span class=op>{</span></span>
+<span id=cb3-14><a href=#cb3-14></a>    part1()<span class=op>;</span></span>
+<span id=cb3-15><a href=#cb3-15></a><span class=op>}</span></span>
+<span id=cb3-16><a href=#cb3-16></a><span class=kw>fn</span> main() <span class=op>{</span></span>
+<span id=cb3-17><a href=#cb3-17></a>    part0()<span class=op>;</span></span>
+<span id=cb3-18><a href=#cb3-18></a><span class=op>}</span></span></code></pre></div> Compiler Output <div class=sourceCode> <pre class="sourceCode txt"><code class="sourceCode default"><font color=#F66151><b>error[E0277]</b></font><b>: the trait bound `{integer}: MyPoly` is not satisfied</b>
+  <font color=#2A7BDE><b>--&gt; </b></font>src/main.rs:11:11
+   <font color=#2A7BDE><b>|</b></font>
+<font color=#2A7BDE><b>11</b></font> <font color=#2A7BDE><b>| </b></font>    part2(123);
+   <font color=#2A7BDE><b>| </b></font>    <font color=#2A7BDE><b>-----</b></font> <font color=#F66151><b>^^^</b></font> <font color=#F66151><b>the trait `MyPoly` is not implemented for `{integer}`</b></font>
+   <font color=#2A7BDE><b>| </b></font>    <font color=#2A7BDE><b>|</b></font>
+   <font color=#2A7BDE><b>| </b></font>    <font color=#2A7BDE><b>required by a bound introduced by this call</b></font>
+   <font color=#2A7BDE><b>|</b></font>
+<font color=#33D17A><b>note</b></font>: required by a bound in `part2`
+  <font color=#2A7BDE><b>--&gt; </b></font>src/main.rs:7:12
+   <font color=#2A7BDE><b>|</b></font>
+<font color=#2A7BDE><b>7</b></font>  <font color=#2A7BDE><b>| </b></font>fn part2&lt;T:MyPoly&gt;(a: T) {
+   <font color=#2A7BDE><b>| </b></font>           <font color=#33D17A><b>^^^^^^</b></font> <font color=#33D17A><b>required by this bound in `part2`</b></font>
+</code></pre> </div> <p>The Rust compiler sees that the bug has to be in the body of <code>part1</code> or the signature of <code>part2</code>.</p> <p>Rust does not even attempt to use a type that does not fulfill the trait bound, i.e. it fails early, while C++ attempts to instantiate the template with a bad type. This is why Rust generics are nicer to debug than C++ templates.</p> <!--
+
+
+def example(functr):
+       funcptr()
+
+ist so ähnlich wie
+
+def example(i):
+       if i == 0:
+              funcA()
+       elif i == 1:
+              funcB()
+       elif i == 2:
+              funcC()
+       elif i == 3:
+              funcD()
+
+
+twitter archival
+
+
+todo: Einfachheit kann das gegenteil erreichen: beispiel: make vs meson, #define vs rust macros, C++ templates vs Rust templates    python interpreter ist eh da      if you dont use a js framework, you end up writing your own framework, and the last thing anyone needs is another js framework.
+
+
+--> </body> </html> 
