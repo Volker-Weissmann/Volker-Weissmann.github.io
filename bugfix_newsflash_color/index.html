@@ -1,2 +1,101 @@
 <!doctype html><!-- Adopted from: pandoc --print-default-template=html5  --><html lang=en dir=ltr> <head><link rel=stylesheet href=/styles.css><title>Fixing a bug in NewsFlash and shaving a yak. - Volker Weißmann</title><meta charset=utf-8><meta name=viewport content="width=device-width, initial-scale=1.0, user-scalable=yes"><meta name=keywords content="Programming, Bug, Debugging, Yak
-Shaving, NewsFlash, rss, rust, gdb, webkit"><meta name=description content=todo></head> <body> <div id=sidebar> <nav id=TOC role=doc-toc> <h3>Table of Contents</h3> <ul> <li><a href=#the-initial-task>The initial task</a></li> </ul> </nav> </div> <div id=article> <article> <h1> Fixing a bug in NewsFlash and shaving a yak. </h1> <div class=abstract> <div class=abstract-title>Abstract</div> todo </div> <!-- If the follow line is indented, <pre> blocks in markdown will be indented, but they should not be. The file extension is .nfhtml instead of .html to stop vscode from formatting on save. --> <h1 id=the-initial-task>The initial task</h1> <p>There is a bug in <a href=https://gitlab.com/news-flash/news_flash_gtk>NewsFlash</a>, my RSS reader of choice. When using the light theme, &lt;blockquote&gt;’s from <a href=https://blog.fefe.de/rss.xml?html>this feed</a> have the same white font color as the background and are therefore unreadable.</p> </article> </div> <hr> <center> <footer> <a href=/index.html>Home</a> | <a href=mailto:volker.weissmann@gmx.de>volker.weissmann@gmx.de</a> </footer> </center> </body> </html> 
+Shaving, NewsFlash, rss, rust, gdb, webkit"><meta name=description content=todo></head> <body> <div id=sidebar> <nav id=TOC role=doc-toc> <h3>Table of Contents</h3> <ul> <li><a href=#the-initial-task><span>The initial task</span></a></li> <li><a href=#building-newsflash><span>Building NewsFlash</span></a></li> <li><a href=#database-problems><span>Database Problems</span></a></li> <li><a href=#failing-tests><span>Failing Tests</span></a></li> <li><a href=#rust-linking-errors><span>Rust Linking Errors</span></a></li> <li><a href=#webkit-debug-symbols><span>WebKit Debug Symbols</span></a></li> </ul> </nav> </div> <div id=article> <article> <h1> Fixing a bug in NewsFlash and shaving a yak. </h1> <div class=abstract> <div class=abstract-title>Abstract</div> todo </div> <!-- If the follow line is indented, <pre> blocks in markdown will be indented, but they should not be. The file extension is .nfhtml instead of .html to stop vscode from formatting on save. --> <h2 id=the-initial-task><a href=#the-initial-task>The initial task</a></h2> <p>There is a bug in <a href=https://gitlab.com/news-flash/news_flash_gtk>NewsFlash</a>, my RSS reader of choice. When using the light theme, &lt;blockquote&gt;’s from <a href=https://blog.fefe.de/rss.xml?html>this feed</a> have the same white font color as the background and are therefore unreadable. Fixing this seemed like a simple and quick task: It consists of just 18k lines of Rust code (although I later found out it depends NewsFlash is split into two rust crates, called <code>news_flash_gtk</code> and <code>news_flash</code>, which is another 13k lines of rust code) so it cannot be that hard to read. <code>find -name *.css</code> returns three results, one of them is <code>news_flash_gtk/data/resources/article_view/style.css</code>. Naturally, I suspected that the reason some text is white is that this css file sets it to white or at least forgets to set it to black. So, it should be a quick fix. But it turned out to be quite a yak-shaving…</p> <h2 id=building-newsflash><a href=#building-newsflash>Building NewsFlash</a></h2> <p>NewsFlash is build with Meson. I like Meson quite a lot, because its build definitions are really boring and readable. As recommended, I build it with</p> <pre class=shell><code>meson --prefix=/usr build
+cd build
+ninja</code></pre> which worked just fine. Unfortunately, changing <code>style.css</code> and re-running <code>ninja</code> did not trigger a rebuild. This could have two possible reasons: - <code>style.css</code> is just dead code. - <code>style.css</code> is read in some build step, but not specified as a dependency in the build definition. I unsuccessfully tried a while to find in which build step <code>style.css</code> is read. The winning idea was to prevent the file from being red using <code>chmod 000 style.css</code>, then do a clean rebuild and see who complains. <div class=sourceCode> <pre class="sourceCode txt"><code class="sourceCode default"><font color=#F66151><b>error</b></font><b>: proc-macro derive panicked</b>
+  <font color=#2A7BDE><b>--&gt; </b></font>src/article_view/mod.rs:39:10
+   <font color=#2A7BDE><b>|</b></font>
+<font color=#2A7BDE><b>39</b></font> <font color=#2A7BDE><b>| </b></font>#[derive(RustEmbed)]
+   <font color=#2A7BDE><b>| </b></font>         <font color=#F66151><b>^^^^^^^^^</b></font>
+   <font color=#2A7BDE><b>|</b></font>
+   <font color=#2A7BDE><b>= </b></font><b>help</b>: message: File should be readable: Os { code: 13, kind: PermissionDenied, message: &quot;Permission denied&quot; }
+</code></pre> </div> <p>Bingo. In hindsight, I should have came up with that idea sooner. Understanding why touching <code>style.css</code> did not trigger a rebuild is simple: <code>news_flash_gtk/src/meson.build</code> includes the lines</p> <pre class=meson><code>newsflash_sources = files(
+    &#39;article_list/models/article.rs&#39;,
+    ...
+)
+cargo_release = custom_target(&#39;cargo-build&#39;,
+    build_by_default: true,
+    input: [
+            newsflash_sources,
+            ],
+    output: [&#39;com.gitlab.newsflash&#39;],
+    install: true,
+    install_dir: newsflash_bindir,
+    console: true,
+    command: [cargo_script,
+                &#39;@SOURCE_ROOT@&#39;,
+                &#39;@OUTPUT@&#39;,
+                meson.build_root(),
+                profile,
+                &#39;--features &quot;@0@&quot;&#39;.format(features)
+                ])</code></pre> <p>Running <code>ninja</code> will only rerun <code>cargo</code> if one of the files listed in <code>newsflash_sources</code> changed. Added <code>styles.css</code> to <code>newsflash_sources</code> therefore fixes this bug. I send this patch <a href=https://gitlab.com/news-flash/news_flash_gtk/-/merge_requests/89>upstream</a> and it got merged.</p> <h2 id=database-problems><a href=#database-problems>Database Problems</a></h2> Now that the build works, lets start NewsFlash. Once I attempt to select <code>Local RSS</code> (or attempt to log in), nothing happens but this is printed to stderr. <div class=sourceCode> <pre class="sourceCode txt"><code class="sourceCode default">02:20:41 - <font color=#C01C28><b>ERROR</b></font> - Database migration failed: Failed with: FOREIGN KEY constraint failed (news_flash::database:181)
+</code></pre> </div> <p>Oh Fuck Me. Deleting the config folder that stores the database does not change me.</p> <h2 id=failing-tests><a href=#failing-tests>Failing Tests</a></h2> <p>After debugging for a while, I thought: I should run the unittests. Maybe there is some minimal database example that triggers the same bug.</p> <div class=sourceCode> <pre class="sourceCode txt"><code class="sourceCode default"><span style=background-color:#0087AF><font color=#FFFFFF><b> volker </b></font></span><span style=background-color:#585858><font color=#0087AF> </font></span><span style=background-color:#585858><font color=#BCBCBC>~ </font></span><span style=background-color:#585858><font color=#8A8A8A> </font></span><span style=background-color:#585858><font color=#BCBCBC>Sync </font></span><span style=background-color:#585858><font color=#8A8A8A> </font></span><span style=background-color:#585858><font color=#BCBCBC>git </font></span><span style=background-color:#585858><font color=#8A8A8A> </font></span><span style=background-color:#585858><font color=#D0D0D0><b>news_flash_gtk </b></font></span><font color=#585858> </font><font color=#005FD7>cargo</font> <font color=#00AFFF>test</font>
+<font color=#26A269><b>    Finished</b></font> test [unoptimized + debuginfo] target(s) in 0.62s
+<font color=#26A269><b>     Running</b></font> unittests (target/debug/deps/news_flash_gtk-0f333f82bdbfa5b7)
+
+running 8 tests
+test color::tests::hsla_to_rgba ... <font color=#26A269>ok</font>
+test color::tests::parse_color_string ... <font color=#26A269>ok</font>
+test color::tests::rgba_to_hsla ... <font color=#26A269>ok</font>
+test i18n::tests::test_i18n ... <font color=#26A269>ok</font>
+test i18n::tests::test_i18n_f ... <font color=#26A269>ok</font>
+test i18n::tests::test_pi18n ... <font color=#26A269>ok</font>
+test i18n::tests::test_i18n_k ... <font color=#26A269>ok</font>
+test util::mercury::tests::parse_phoronix ... <font color=#26A269>ok</font>
+
+test result: <font color=#26A269>ok</font>. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.55s
+
+<font color=#C01C28><b>error</b></font><b>:</b> test failed, to rerun pass &apos;--bin news_flash_gtk&apos;
+
+Caused by:
+  process didn&apos;t exit successfully: `/home/volker/Sync/git/news_flash_gtk/target/debug/deps/news_flash_gtk-0f333f82bdbfa5b7` (signal: 6, SIGABRT: process abort signal)
+<span style=background-color:#0087AF><font color=#FFFFFF><b> volker </b></font></span><span style=background-color:#585858><font color=#0087AF> </font></span><span style=background-color:#585858><font color=#BCBCBC>~ </font></span><span style=background-color:#585858><font color=#8A8A8A> </font></span><span style=background-color:#585858><font color=#BCBCBC>Sync </font></span><span style=background-color:#585858><font color=#8A8A8A> </font></span><span style=background-color:#585858><font color=#BCBCBC>git </font></span><span style=background-color:#585858><font color=#8A8A8A> </font></span><span style=background-color:#585858><font color=#D0D0D0><b>news_flash_gtk </b></font></span><font color=#585858> </font>
+</code></pre> </div> Wait what? There are 8 tests, 8 passed, 0 failed, 0 were ignored or filtered out, we have 8 <code>ok</code> marks … but it failed anyway? It took me a while to understand what is happening: It turns out that the <code>parse_phoronix</code> function contains code, that will make the program crash. But this crash is delayed - control flow reaches the end of the <code>parse_phoronix</code> function and returns back to the test harness. It is the exit handler that aborts: <div class=sourceCode> <pre class="sourceCode txt"><code class="sourceCode default">Thread 1 &quot;news_flash_gtk-&quot; received signal SIGABRT, Aborted.
+<font color=#12488B>0x00007ffff227a36c</font> in <font color=#A2734C>??</font> () from <font color=#26A269>/usr/lib/libc.so.6</font>
+(gdb) bt
+#0  <font color=#12488B>0x00007ffff227a36c</font> in  () at <font color=#26A269>/usr/lib/libc.so.6</font>
+#1  <font color=#12488B>0x00007ffff222a838</font> in <font color=#A2734C>raise</font> () at <font color=#26A269>/usr/lib/libc.so.6</font>
+#2  <font color=#12488B>0x00007ffff2214535</font> in <font color=#A2734C>abort</font> () at <font color=#26A269>/usr/lib/libc.so.6</font>
+#3  <font color=#12488B>0x00007ffff54774ac</font> in  () at <font color=#26A269>/usr/lib/libwebkit2gtk-5.0.so.0</font>
+#4  <font color=#12488B>0x00007ffff586ecdd</font> in  () at <font color=#26A269>/usr/lib/libwebkit2gtk-5.0.so.0</font>
+#5  <font color=#12488B>0x00007ffff57d5c5b</font> in  () at <font color=#26A269>/usr/lib/libwebkit2gtk-5.0.so.0</font>
+#6  <font color=#12488B>0x00007ffff2cb1b35</font> in <font color=#A2734C>g_object_unref</font> () at <font color=#26A269>/usr/lib/libgobject-2.0.so.0</font>
+#7  <font color=#12488B>0x00007ffff57ddfbc</font> in  () at <font color=#26A269>/usr/lib/libwebkit2gtk-5.0.so.0</font>
+#8  <font color=#12488B>0x00007ffff2cb1b35</font> in <font color=#A2734C>g_object_unref</font> () at <font color=#26A269>/usr/lib/libgobject-2.0.so.0</font>
+#9  <font color=#12488B>0x00007ffff222cef5</font> in  () at <font color=#26A269>/usr/lib/libc.so.6</font>
+#10 <font color=#12488B>0x00007ffff222d070</font> in <font color=#A2734C>on_exit</font> () at <font color=#26A269>/usr/lib/libc.so.6</font>
+#11 <font color=#12488B>0x00007ffff2215297</font> in  () at <font color=#26A269>/usr/lib/libc.so.6</font>
+#12 <font color=#12488B>0x00007ffff221534a</font> in <font color=#A2734C>__libc_start_main</font> () at <font color=#26A269>/usr/lib/libc.so.6</font>
+#13 <font color=#12488B>0x00005555555dfec5</font> in <font color=#A2734C>_start</font> () at <font color=#26A269>../sysdeps/x86_64/start.S</font>:115
+(gdb)
+</code></pre> </div> <h2 id=rust-linking-errors><a href=#rust-linking-errors>Rust Linking Errors</a></h2> I suspected that the <code>parse_phoronix</code> function corrupts memory, which leads to this crash. So, I decided to ran everything under <a href=https://clang.llvm.org/docs/AddressSanitizer.html>ASAN</a>. The <a href=https://doc.rust-lang.org/stable/unstable-book/compiler-flags/sanitizer.html>documentation</a> says I should compile with <code>RUSTFLAGS="-Zsanitizer=address"</code>. So let’s try that: <div class=sourceCode> <pre class="sourceCode txt"><code class="sourceCode default"><font color=#F66151><b>error</b></font><b>: /home/volker/Sync/git/news_flash_gtk/target/debug/deps/libproc_macro_error_attr-6323cc5d4e1386c9.so: undefined symbol: __asan_option_detect_stack_use_after_return</b>
+   <font color=#2A7BDE><b>--&gt; </b></font>/home/volker/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro-error-1.0.4/src/lib.rs:284:9
+    <font color=#2A7BDE><b>|</b></font>
+<font color=#2A7BDE><b>284</b></font> <font color=#2A7BDE><b>| </b></font>pub use proc_macro_error_attr::proc_macro_error;
+    <font color=#2A7BDE><b>| </b></font>        <font color=#F66151><b>^^^^^^^^^^^^^^^^^^^^^</b></font>
+</code></pre> </div> <p>A fucking linking error in Rust. What a rare sight. It turns out that you need an additional flag, so I created a <a href=https://github.com/rust-lang/rust/pull/97021>PR</a> that adds a note to the documentation. I am a bit disappointed that Rust does not catch this error and gives you a nicer error message. Anyway, ASAN confirmed the absence of memory corruption. So, our search for the bug that causes the SIGABRT continues.</p> <h2 id=webkit-debug-symbols><a href=#webkit-debug-symbols>WebKit Debug Symbols</a></h2> <p>I want to have debug symbols in my backtrace. So let’s try to compile WebKit with debug symbols. I followed <a href=https://trac.webkit.org/wiki/BuildingGtk>their documentation</a>, then compiled NewsFlash using</p> <pre class=shell><code>export LIBRARY_PATH=&quot;/run/media/volker/DATA/cloned/webkitgtk-2.36.1/lib&quot;
+export LD_LIBRARY_PATH=&quot;/run/media/volker/DATA/cloned/webkitgtk-2.36.1/lib&quot;
+cargo build</code></pre> Now test fails with <div class=sourceCode> <pre class="sourceCode txt"><code class="sourceCode default">** (process:222197): <font color=#C01C28><b>ERROR</b></font> **: <font color=#12488B>22:15:48.714</font>: Unable to spawn a new child process: Failed to spawn child process “/usr/local/libexec/webkit2gtk-4.1/WebKitNetworkProcess” (No such file or directory)
+</code></pre> </div> <p>Oh Fuck Me Hard. Looks like there are some subtleties in how WebKit is built. So let’s download the PKGBUILD that describes how ArchLinux builds Webkit and modify it to include Debug symbols:</p> <pre class=shell><code>build() {
+  CFLAGS+=&#39; -ggdb3 -D_GLIBCXX_DEBUG &#39;
+  CXXFLAGS+=&#39; -ggdb3 -D_GLIBCXX_DEBUG &#39;
+
+  cmake -S webkitgtk-$pkgver -B build -G Ninja \
+    -DPORT=GTK \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_INSTALL_LIBDIR=lib \
+    -DCMAKE_INSTALL_LIBEXECDIR=lib \
+    -DCMAKE_SKIP_RPATH=ON \
+    -DUSE_GTK4=ON \
+    -DENABLE_GTKDOC=OFF \
+    -DENABLE_MINIBROWSER=ON
+  cmake --build build -j2
+}</code></pre> <p>If once we run it in gdb, we are greeted by:</p> <pre><code>warning: Could not find DWO CU Source/WebKit/CMakeFiles/WebKit.dir/__/__/DerivedSources/WebKit/AutomationBackendDispatchers.cpp.dwo(0x8819e41405bd3bc0) referenced by CU at offset 0x23 [in module /usr/lib/debug/usr/lib/libwebkit2gtk-5.0.so.0.0.0.debug]
+Dwarf Error: unexpected tag &#39;DW_TAG_skeleton_unit&#39; at offset 0x23 [in module /usr/lib/debug/usr/lib/libwebkit2gtk-5.0.so.0.0.0.debug]
+warning: Could not find DWO CU Source/JavaScriptCore/CMakeFiles/LowLevelInterpreterLib.dir/llint/LowLevelInterpreter.cpp.dwo(0x8640769469a7cd6a) referenced by CU at offset 0x23 [in module /usr/lib/debug/usr/lib/libjavascriptcoregtk-5.0.so.0.0.0.debug]
+Dwarf Error: unexpected tag &#39;DW_TAG_skeleton_unit&#39; at offset 0x23 [in module /usr/lib/debug/usr/lib/libjavascriptcoregtk-5.0.so.0.0.0.debug]</code></pre> <p><em>Angry German noises.</em></p> <p>It took me longer than it should to understand both warnings: Those *.dwo files get build, but not installed. <code>Source/.../AutomationBackendDispatchers.cpp.dwo</code> does exist in the build directory. So let’s <code>cd</code> into the build directory and try again:</p> <pre><code>Dwarf Error: unexpected tag &#39;DW_TAG_skeleton_unit&#39; at offset 0x47fc [in module /usr/lib/debug/usr/lib/libjavascriptcoregtk-5.0.so.0.0.0.debug]
+Exception ignored in: &lt;gdb._GdbOutputFile object at 0x7fdccb07fa30&gt;
+Traceback (most recent call last):
+  File &quot;/usr/share/gdb/python/gdb/__init__.py&quot;, line 47, in flush
+    def flush(self):
+KeyboardInterrupt:</code></pre> <p>Lol, What? I did not touch the keyboard. Running <code>sudo journalctl -b</code> shows the true reason:</p> <pre><code>Mai 26 00:01:17 battle earlyoom[513]: sending SIGTERM to process 40789 uid 1000 &quot;gdb&quot;: badness 1124, VmRSS 4782 MiB</code></pre> <p>GDB uses up to much memory, so it gets killed. I have 8 GB of RAM and 24 GB of Swap, but apparently that is not enough. I opened an <a href="https://sourceware.org/bugzilla/show_bug.cgi?id=29185">issue at bugzilla</a> to complain about how GDB claims it was killed by a KeyboardInterrupt, even though it was a SIGTERM.</p> <p>Next try: Let’s replace <code>-ggdb3</code> with <code>-ggdb1</code>. This should generate less debuginfo and should therefore use less RAM.</p> <p>… Nope, still eats too much RAM.</p> <p>https://aur.archlinux.org/packages/creduce#comment-866589 https://github.com/tauri-apps/webkit2gtk-rs/pull/124 https://github.com/tauri-apps/webkit2gtk-rs/pull/125 https://sourceware.org/bugzilla/show_bug.cgi?id=29185</p> </article> </div> <hr> <center> <footer> <a href=/index.html>Home</a> | <a href=mailto:volker.weissmann@gmx.de>volker.weissmann@gmx.de</a> </footer> </center> </body> </html> 
