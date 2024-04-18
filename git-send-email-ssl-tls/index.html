@@ -1,0 +1,18 @@
+<!doctype html><!-- Adopted from: pandoc --print-default-template=html5  --><html lang=en dir=ltr> <head><link rel=icon href=/favicon.svg sizes=any type=image/svg+xml><link rel=stylesheet href=/styles.css><title>Rant: Email is straight from hell - Volker Weißmann</title><meta charset=utf-8><meta name=viewport content="width=device-width, initial-scale=1.0, user-scalable=yes"><meta name=keywords content><meta name=description content="A short but not-so-fun email
+debugging session."></head> <body> <div id=article> <article> <h1> Rant: Email is straight from hell </h1> <div class=abstract> <div class=abstract-title>Abstract</div> A short but not-so-fun email debugging session. </div> <!-- If the follow line is indented, <pre> blocks in markdown will be indented, but they should not. The file extension is .nfhtml instead of .html to stop vscode from formatting on save. --> <p>Today, I used git send-email for the first time. I tried adding this this to my gitconfig</p> <pre><code>[sendemail]
+    smtpencryption = tls
+    smtpserver = mail.gmx.net
+    smtpserverport = 465
+    smtpuser = volker.weissmann@gmx.de</code></pre> <p>If you think that the email-ecosystem is not a complete clusterfuck, you might assume that this will work. But nope, we get this unhelpful error message:</p> <pre><code>$ git send-email --to=libc-alpha@sourceware.org 0001-Fix-FORTIFY_SOURCE-false-positive.patch
+...
+Unable to initialize SMTP properly. Check config and use --smtp-debug. VALUES: server=mail.gmx.net encryption=tls hello=censored port=465 at /usr/lib/git-core/git-send-email line 1707.</code></pre> <p>But hey, at least it tells me to add the <code>--smtp-debug</code> flag. So lets try that:</p> <pre><code>$ git send-email --to=libc-alpha@sourceware.org 0001-Fix-FORTIFY_SOURCE-false-positive.patch --smtp-debug
+...
+Unable to initialize SMTP properly. Check config and use --smtp-debug. VALUES: server=mail.gmx.net encryption=tls hello=censored port=465 at /usr/lib/git-core/git-send-email line 1707.</code></pre> <p>Turns out that <code>--smtp-debug</code> is not the correct flag, <code>--smtp-debug=1</code> is, so let’s try that:</p> <pre><code>$ git send-email --to=libc-alpha@sourceware.org 0001-Fix-FORTIFY_SOURCE-false-positive.patch --smtp-debug=1
+Net::SMTP&gt;&gt;&gt; Net::SMTP(3.15)
+Net::SMTP&gt;&gt;&gt;   Net::Cmd(3.15)
+Net::SMTP&gt;&gt;&gt;     Exporter(5.77)
+Net::SMTP&gt;&gt;&gt;   IO::Socket::IP(0.4101)
+Net::SMTP&gt;&gt;&gt;     IO::Socket(1.52)
+Net::SMTP&gt;&gt;&gt;       IO::Handle(1.52)
+Net::SMTP: Net::Cmd::getline(): unexpected EOF on command channel:  at /usr/lib/git-core/git-send-email line 1680.
+Unable to initialize SMTP properly. Check config and use --smtp-debug. VALUES: server=mail.gmx.net encryption=tls hello=censored port=465 at /usr/lib/git-core/git-send-email line 1707.</code></pre> <p>Ok, we get nothing fucking useful. Now take a guess why this did not work. I give you a hint: It is the most bullshit reason possible. Did you make a guess? Then here is the solution: <code>smtpencryption = ssl</code> works, but <code>smtpencryption = tls</code> dow not. Seriously. I kid you not. This amount of bullshit <em>actually</em> exists in the email-ecosystem.</p> <p>Those are the moments when I ask myself if I should have stayed in Physics.</p> </article> </div> <hr> <center> <footer> <a href=/ >Home</a> | <a href=mailto:volker.weissmann@gmx.de>volker.weissmann@gmx.de</a> </footer> </center> </body> </html> 

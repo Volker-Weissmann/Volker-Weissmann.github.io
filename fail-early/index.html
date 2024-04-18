@@ -1,0 +1,89 @@
+<!doctype html><!-- Adopted from: pandoc --print-default-template=html5  --><html lang=en dir=ltr> <head><link rel=icon href=/favicon.svg sizes=any type=image/svg+xml><link rel=stylesheet href=/styles.css><title>Failing Early for Nicer Error Messages - Volker Weißmann</title><meta charset=utf-8><meta name=viewport content="width=device-width, initial-scale=1.0, user-scalable=yes"><meta name=keywords content><meta name=description content="I explain how failing early
+produces nicer error messages - A general principle in software
+engineering. Dynamic typing and C++ templates are used as negative
+examples, while static typing and Rust generics are used as positive
+examples. Every experienced programmer probably already knows this, but
+I still wrote this article, because I wish I knew this earlier."></head> <body> <div id=sidebar> <nav id=TOC role=doc-toc> <h3>Table of Contents</h3> <ul> <li><a href=#the-principle id=toc-the-principle>The Principle</a></li> <li><a href=#case-study-1-dynamic-typing-vs-static-typing id=toc-case-study-1-dynamic-typing-vs-static-typing>Case Study 1: Dynamic Typing vs Static Typing</a></li> <li><a href=#case-study-2-c-templates-vs-rust-generics id=toc-case-study-2-c-templates-vs-rust-generics>Case Study 2: C++ Templates vs Rust Generics</a></li> <li><a href=#other-opinions id=toc-other-opinions>Other Opinions</a></li> </ul> </nav> </div> <div id=article> <article> <h1> Failing Early for Nicer Error Messages </h1> <div class=abstract> <div class=abstract-title>Abstract</div> I explain how failing early produces nicer error messages - A general principle in software engineering. Dynamic typing and C++ templates are used as negative examples, while static typing and Rust generics are used as positive examples. Every experienced programmer probably already knows this, but I still wrote this article, because I wish I knew this earlier. </div> <!-- If the follow line is indented, <pre> blocks in markdown will be indented, but they should not. The file extension is .nfhtml instead of .html to stop vscode from formatting on save. --> <h2 id=the-principle><a href=#the-principle>The Principle</a></h2> <p>Let us say, we have a chain of function calls, or more generally speaking a chain of code parts that give some command to the next part of the chain.</p> <p><img src=code-chain-1.svg alt="Chain of code parts. Part 0 gives command 1 to part 1, which gives command 2 to part 2, ..."></p> <p>Now let us assume that some part of the chain, w.l.o.g. part 1 contains a bug. This bug makes part 1 give a command to part 2 that is impossible to fulfill. This command makes part 2 gives another, different but also impossible command to part 3. This command makes in turn part 3 give another, different and impossible command to part 4. Part 4 then realizes that it was given an impossible command, prints an error message and aborts.</p> <p><img src=code-chain-2.svg alt="Chain of code parts. Unlike the previous image, this time part 1 has a bug and therefore gives an impossible command to part 2, which gives an impossible command to part 3, which gives an impossible command to part 4, which aborts."></p> <!-- Here, I put two parts between the part that has the bug and the part that aborts. In general, there is a chain with `N` parts between bug and aborting.  --> <p>My argument is that the shorter the chain between giving an impossible command and realizing the command is impossible is, the easier the debugging will be. There are two reasons for this:</p> <ul> <li>We know that that every part of the chain that comes after the abort, is not the buggy part. Here, we know that part 5 is not the problem, if part 3 would have aborted, we would have also known that part 4 is not the problem.</li> <li>Since each part of the chain after the bug, here part 2 and part 3, transforms an impossible command into another impossible command, the command that will be detected as impossible, here command 4, will be quite distant from the initial problem, i.e. that part 1 gives command 2.</li> </ul> <p>In other words, assertions are a good thing.</p> <h2 id=case-study-1-dynamic-typing-vs-static-typing><a href=#case-study-1-dynamic-typing-vs-static-typing>Case Study 1: Dynamic Typing vs Static Typing</a></h2> <!-- Dynamically typed languages are an example of late failure, in contrast to statically typed languages which are an example of early failure. --> <p>Statically typed languages are an example of early failure, in contrast to dynamically typed languages which are an example of late failure. Consider this C++ code.</p> <div class=sourceCode id=cb1><pre class="sourceCode numberSource cpp numberLines"><code class="sourceCode cpp"><span id=cb1-1><a href=#cb1-1></a><span class=kw>class</span> MyType <span class=op>{</span></span>
+<span id=cb1-2><a href=#cb1-2></a><span class=kw>public</span><span class=op>:</span></span>
+<span id=cb1-3><a href=#cb1-3></a>  <span class=dt>void</span> member<span class=op>()</span> <span class=op>{}</span></span>
+<span id=cb1-4><a href=#cb1-4></a><span class=op>};</span></span>
+<span id=cb1-5><a href=#cb1-5></a><span class=dt>void</span> part3<span class=op>(</span>MyType b<span class=op>)</span> <span class=op>{</span> b<span class=op>.</span>member<span class=op>();</span> <span class=op>}</span></span>
+<span id=cb1-6><a href=#cb1-6></a><span class=dt>void</span> part2<span class=op>(</span>MyType a<span class=op>)</span> <span class=op>{</span> part3<span class=op>(</span>a<span class=op>);</span> <span class=op>}</span></span>
+<span id=cb1-7><a href=#cb1-7></a><span class=dt>void</span> part1<span class=op>()</span> <span class=op>{</span> part2<span class=op>(</span><span class=dv>123</span><span class=op>);</span> <span class=op>}</span></span>
+<span id=cb1-8><a href=#cb1-8></a><span class=dt>void</span> part0<span class=op>()</span> <span class=op>{</span> part1<span class=op>();</span> <span class=op>}</span></span>
+<span id=cb1-9><a href=#cb1-9></a><span class=dt>int</span> main<span class=op>()</span> <span class=op>{</span> part0<span class=op>();</span> <span class=op>}</span></span></code></pre></div> The bug in this code, is in <code>part1</code>: It should call <code>part2</code> with a variable of type <code>MyType</code>, but it calls it with an integer. Because C++ is a statically typed language, <code>part2</code> checks if it was given an impossible command i.e. an argument of the wrong type and the error message correctly pinpoints the problem: <div class=sourceCode> <pre class="sourceCode txt"><code class="sourceCode default"><b>main.cpp:7:16: </b><font color=#C01C28><b>error: </b></font><b>no matching function for call to &apos;part2&apos;</b>
+void part1() { part2(123); }
+<font color=#26A269><b>               ^~~~~</b></font>
+<b>main.cpp:6:6: </b><font color=#171421><b>note: </b></font>candidate function not viable: no known conversion from &apos;int&apos; to &apos;MyType&apos; for 1st argument
+void part2(MyType a) { part3(a); }
+<font color=#26A269><b>     ^</b></font>
+</code></pre> </div> <p>Just from looking at this error message, we can see that the bug has to be in the body of <code>part1</code> or the signature of <code>part2</code>. In contrast, if we run this Python code:</p> <div class=sourceCode id=cb2><pre class="sourceCode numberSource python numberLines"><code class="sourceCode python"><span id=cb2-1><a href=#cb2-1></a><span class=kw>class</span> MyType:</span>
+<span id=cb2-2><a href=#cb2-2></a>    <span class=kw>def</span> member(<span class=va>self</span>):</span>
+<span id=cb2-3><a href=#cb2-3></a>        <span class=cf>pass</span></span>
+<span id=cb2-4><a href=#cb2-4></a><span class=kw>def</span> part3(b):</span>
+<span id=cb2-5><a href=#cb2-5></a>    b.member()</span>
+<span id=cb2-6><a href=#cb2-6></a><span class=kw>def</span> part2(a):</span>
+<span id=cb2-7><a href=#cb2-7></a>    part3(a)</span>
+<span id=cb2-8><a href=#cb2-8></a><span class=kw>def</span> part1():</span>
+<span id=cb2-9><a href=#cb2-9></a>    part2(<span class=dv>123</span>)</span>
+<span id=cb2-10><a href=#cb2-10></a><span class=kw>def</span> part0():</span>
+<span id=cb2-11><a href=#cb2-11></a>    part1()</span>
+<span id=cb2-12><a href=#cb2-12></a>part0()</span></code></pre></div> <p>It fails with</p> <pre><code>Traceback (most recent call last):
+  line 12, in &lt;module&gt;
+    part0()
+  line 11, in part0
+    part1()
+  line 9, in part1
+    part2(123)
+  line 7, in part2
+    part3(a)
+  line 5, in part3
+    b.member()
+AttributeError: &#39;int&#39; object has no attribute &#39;member&#39;</code></pre> <p>Because Python is a dynamically typed, the error message only says that the bug is either in <code>part0</code>, <code>part1</code>, <code>part2</code> or <code>part3</code>. Much less specific than the C++ version, much more work in finding the bug. In a statically typed language, compilation fails as soon as a type is wrong, i.e. it fails early. In a dynamically typed language it only fails when you actually try to do something with this type that you cannot, i.e. it fails late.</p> <p>That is why statically typed languages are easier to debug and therefore better than dynamically typed languages.</p> <p><em>Running away from the angry mob.</em></p> <h2 id=case-study-2-c-templates-vs-rust-generics><a href=#case-study-2-c-templates-vs-rust-generics>Case Study 2: C++ Templates vs Rust Generics</a></h2> <p>The statically typed language C++ was a positive example in the previous chapter, but it will be a negative example in this one. Once we add a template to our previous C++ code, i.e.</p> <div class=sourceCode id=cb4><pre class="sourceCode numberSource cpp numberLines"><code class="sourceCode cpp"><span id=cb4-1><a href=#cb4-1></a><span class=kw>class</span> MyType <span class=op>{</span></span>
+<span id=cb4-2><a href=#cb4-2></a><span class=kw>public</span><span class=op>:</span></span>
+<span id=cb4-3><a href=#cb4-3></a>  <span class=dt>void</span> member<span class=op>()</span> <span class=op>{}</span></span>
+<span id=cb4-4><a href=#cb4-4></a><span class=op>};</span></span>
+<span id=cb4-5><a href=#cb4-5></a><span class=kw>template</span> <span class=op>&lt;</span><span class=kw>typename</span> T<span class=op>&gt;</span> <span class=dt>void</span> part3<span class=op>(</span>T b<span class=op>)</span> <span class=op>{</span> b<span class=op>.</span>member<span class=op>();</span> <span class=op>}</span></span>
+<span id=cb4-6><a href=#cb4-6></a><span class=kw>template</span> <span class=op>&lt;</span><span class=kw>typename</span> T<span class=op>&gt;</span> <span class=dt>void</span> part2<span class=op>(</span>T a<span class=op>)</span> <span class=op>{</span> part3<span class=op>(</span>a<span class=op>);</span> <span class=op>}</span></span>
+<span id=cb4-7><a href=#cb4-7></a><span class=dt>void</span> part1<span class=op>()</span> <span class=op>{</span> part2<span class=op>(</span><span class=dv>123</span><span class=op>);</span> <span class=op>}</span></span>
+<span id=cb4-8><a href=#cb4-8></a><span class=dt>void</span> part0<span class=op>()</span> <span class=op>{</span> part1<span class=op>();</span> <span class=op>}</span></span>
+<span id=cb4-9><a href=#cb4-9></a><span class=dt>int</span> main<span class=op>()</span> <span class=op>{</span> part0<span class=op>();</span> <span class=op>}</span></span></code></pre></div> the error message becomes: <div class=sourceCode> <pre class="sourceCode txt"><code class="sourceCode default"><b>main.cpp:5:42: </b><font color=#C01C28><b>error: </b></font><b>member reference base type &apos;int&apos; is not a structure or union</b>
+template &lt;typename T&gt; void part3(T b) { b.member(); }
+<font color=#26A269><b>                                        ~^~~~~~~</b></font>
+<b>main.cpp:6:41: </b><font color=#171421><b>note: </b></font>in instantiation of function template specialization &apos;part3&lt;int&gt;&apos; requested here
+template &lt;typename T&gt; void part2(T a) { part3(a); }
+<font color=#26A269><b>                                        ^</b></font>
+<b>main.cpp:7:16: </b><font color=#171421><b>note: </b></font>in instantiation of function template specialization &apos;part2&lt;int&gt;&apos; requested here
+void part1() { part2(123); }
+<font color=#26A269><b>               ^</b></font>
+</code></pre> </div> <p>Clang is only able to see that the bug has to be in <code>part1</code>, <code>part2</code> or <code>part3</code>. Let us compare this to the best programming language, Rust:</p> <div class=sourceCode id=cb5><pre class="sourceCode numberSource rust numberLines"><code class="sourceCode rust"><span id=cb5-1><a href=#cb5-1></a><span class=kw>trait</span> MyPoly <span class=op>{</span></span>
+<span id=cb5-2><a href=#cb5-2></a>    <span class=kw>fn</span> member(<span class=op>&amp;</span><span class=kw>self</span>)<span class=op>;</span></span>
+<span id=cb5-3><a href=#cb5-3></a><span class=op>}</span></span>
+<span id=cb5-4><a href=#cb5-4></a><span class=kw>fn</span> part3<span class=op>&lt;</span>T<span class=op>:</span> MyPoly<span class=op>&gt;</span>(b<span class=op>:</span> T) <span class=op>{</span></span>
+<span id=cb5-5><a href=#cb5-5></a>    b<span class=op>.</span>member()<span class=op>;</span></span>
+<span id=cb5-6><a href=#cb5-6></a><span class=op>}</span></span>
+<span id=cb5-7><a href=#cb5-7></a><span class=kw>fn</span> part2<span class=op>&lt;</span>T<span class=op>:</span>MyPoly<span class=op>&gt;</span>(a<span class=op>:</span> T) <span class=op>{</span></span>
+<span id=cb5-8><a href=#cb5-8></a>    part3(a)<span class=op>;</span></span>
+<span id=cb5-9><a href=#cb5-9></a><span class=op>}</span></span>
+<span id=cb5-10><a href=#cb5-10></a><span class=kw>fn</span> part1() <span class=op>{</span></span>
+<span id=cb5-11><a href=#cb5-11></a>    part2(<span class=dv>123</span>)<span class=op>;</span></span>
+<span id=cb5-12><a href=#cb5-12></a><span class=op>}</span></span>
+<span id=cb5-13><a href=#cb5-13></a><span class=kw>fn</span> part0() <span class=op>{</span></span>
+<span id=cb5-14><a href=#cb5-14></a>    part1()<span class=op>;</span></span>
+<span id=cb5-15><a href=#cb5-15></a><span class=op>}</span></span>
+<span id=cb5-16><a href=#cb5-16></a><span class=kw>fn</span> main() <span class=op>{</span></span>
+<span id=cb5-17><a href=#cb5-17></a>    part0()<span class=op>;</span></span>
+<span id=cb5-18><a href=#cb5-18></a><span class=op>}</span></span></code></pre></div> Compiler Output <div class=sourceCode> <pre class="sourceCode txt"><code class="sourceCode default"><font color=#F66151><b>error[E0277]</b></font><b>: the trait bound `{integer}: MyPoly` is not satisfied</b>
+  <font color=#2A7BDE><b>--&gt; </b></font>src/main.rs:11:11
+   <font color=#2A7BDE><b>|</b></font>
+<font color=#2A7BDE><b>11</b></font> <font color=#2A7BDE><b>| </b></font>    part2(123);
+   <font color=#2A7BDE><b>| </b></font>    <font color=#2A7BDE><b>-----</b></font> <font color=#F66151><b>^^^</b></font> <font color=#F66151><b>the trait `MyPoly` is not implemented for `{integer}`</b></font>
+   <font color=#2A7BDE><b>| </b></font>    <font color=#2A7BDE><b>|</b></font>
+   <font color=#2A7BDE><b>| </b></font>    <font color=#2A7BDE><b>required by a bound introduced by this call</b></font>
+   <font color=#2A7BDE><b>|</b></font>
+<font color=#33D17A><b>note</b></font>: required by a bound in `part2`
+  <font color=#2A7BDE><b>--&gt; </b></font>src/main.rs:7:12
+   <font color=#2A7BDE><b>|</b></font>
+<font color=#2A7BDE><b>7</b></font>  <font color=#2A7BDE><b>| </b></font>fn part2&lt;T:MyPoly&gt;(a: T) {
+   <font color=#2A7BDE><b>| </b></font>           <font color=#33D17A><b>^^^^^^</b></font> <font color=#33D17A><b>required by this bound in `part2`</b></font>
+</code></pre> </div> <p>The Rust compiler sees that the bug has to be in the body of <code>part1</code> or the signature of <code>part2</code>.</p> <p>Rust does not even attempt to use a type that does not fulfill the trait bound, i.e. it fails early, while C++ attempts to instantiate the template with a bad type. This is why Rust generics are nicer to debug than C++ templates.</p> <h2 id=other-opinions><a href=#other-opinions>Other Opinions</a></h2> <p><a href=https://en.wikipedia.org/wiki/Robustness_principle>Postel’s law</a> states the opposite of this post. I think Postel’s law is usually wrong.</p> <p><a href=https://sqlite.org/quirks.html#dubious_sql_is_allowed_without_any_error_or_warning>SQLite seems to share my opinion.</a></p> </article> </div> <hr> <center> <footer> <a href=/ >Home</a> | <a href=mailto:volker.weissmann@gmx.de>volker.weissmann@gmx.de</a> </footer> </center> </body> </html> 
