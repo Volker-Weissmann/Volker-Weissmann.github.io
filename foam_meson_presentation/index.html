@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+	<title>FOAM Meson</title>
+
+	<link rel="stylesheet" href="dist/reset.css">
+	<link rel="stylesheet" href="dist/reveal.css">
+	<link rel="stylesheet" href="dist/theme/white.css">
+
+	<!-- Theme used for syntax highlighted code -->
+	<link rel="stylesheet" href="plugin/highlight/monokai.css">
+	<style>
+		.reveal h1,
+		.reveal h2,
+		.reveal h3,
+		.reveal h4,
+		.reveal h5 {
+			text-transform: none;
+		}
+
+		.reveal pre {
+			font-size: 1em;
+		}
+
+		.reveal pre code {
+			max-height: 100%;
+		}
+
+		/* .reveal .code-wrapper code {
+			white-space: pre-wrap;
+		} */
+	</style>
+</head>
+
+<body>
+	<div class="reveal">
+		<div class="slides">
+			<section>
+				<h1>Building OpenFOAM with the Meson build system</h1>
+				<p>Volker Weißmann<br>
+					volker.weissmann@gmx.de<br>
+					https://weissmann.pm<br>
+					No company or university, just too much time
+				</p>
+				<aside class="notes">
+					So ... I'm Volker Weißmann. I will talk about how I build OpenFOAM with meson instead of wmake and
+					about how we could merge my work into the openfoam repo, so that other people can use meson to build
+					OpenFOAM.
+				</aside>
+			</section>
+			<section>
+				<h2>Gnu Make</h2>
+				make is a program, not affiliated with OpenFOAM or me, that reads <code>$CWD/Makefile</code> (and
+				usually also <code>$CWD/subdir/Makefile</code>) and if any of these files contains e.g.
+				<pre class="makefile"><code data-trim data-noescape>
+					foo.o: foo.c
+						gcc foo.c -c -o foo.o
+					  </code></pre>
+				it runs
+				<pre class="bash"><code data-trim data-noescape>
+					gcc foo.c -c -o foo.o
+				</code></pre>
+				<aside class="notes">
+					<p>
+						Last time we spoke I noticed that some people misunderstood which software is responsible for
+						what,
+						so I want to clear those uncertainties up, so let's just go throught the definitions real quick.
+					</p>
+					gnu make also known as make is a program.
+					It was not written by the OpenFOAM people or by me.
+					And if you start it, it searches for a file called Makefile in the current directory. If the
+					Makefile contains something like this for example, it will call gcc like this.
+					Most projects have their makefile recursively include makefiles in subdirectories and that is not
+					considered bad code or anything.
+				</aside>
+			</section>
+			<section>
+				<h2>Ninja</h2>
+				ninja is a program, not affiliated with OpenFOAM or me, that reads <code>$CWD/ninja.build</code> and
+				if
+				<code>$CWD/ninja.build</code> contains e.g.
+				<pre class="txt"><code data-trim data-noescape>
+					rule cc
+  						command = gcc $in -c -o $out
+					build foo.o: cc foo.c
+					  </code></pre>
+				it runs
+				<pre class="bash"><code data-trim data-noescape>
+					gcc foo.c -c -o foo.o
+				</code></pre>
+				<aside class="notes">
+					ninja is basically a Make-alternative or competition to make. It's also not from the OpenFOAM people
+					or me, but from a third party. Similar to how make reads the Makefile ninja reads ninja.build, which
+					basically contains the same thing but with a different syntax and then for example calls gcc like
+					that. I said before that most make-based projects have multiple makefiles, that's not how it works
+					with ninja, you have just one big ninja.build file that contains everything.
+				</aside>
+			</section>
+			<section>
+				<h2>CMake</h2>
+				cmake is a program, not affiliated with OpenFOAM or me, that reads <code>$CWD/CMakeLists.txt</code>
+				(and
+				usually also <code>$CWD/subdir/CMakeLists.txt</code>) and if these files contain something like
+				<pre class="cmake"><code data-trim data-noescape>
+					add_executable(example foo.c)
+				</code></pre>
+				it will create the <code>Makefile</code>'s or the <code>ninja.build</code>-file we talked about.
+				<pre class="cmake"><code data-trim data-noescape>
+					cmake -B builddir -G "Unix Makefiles"
+					cmake -B builddir -G Ninja
+				</code></pre>
+				<aside class="notes">
+					cmake is another third party program, and it reads the CMakeLists.txt files, but it does not call
+					gcc, instead it generates Makefiles or ninja.build files and if you then run make or ninja it calls
+					gcc.
+				</aside>
+			</section>
+			<section>
+				<h2>Meson</h2>
+				Meson is a program, not affiliated with OpenFOAM or barely affiliated me, that reads
+				<code>$CWD/meson.build</code> (and
+				usually also <code>$CWD/subdir/meson.build</code>) and if these files contain something like
+				<pre class="meson"><code data-trim data-noescape>
+					executable('example', 'foo.c')
+				</code></pre>
+				it will create the <code>ninja.build</code>-file we talked about.
+				<pre class="cmake"><code data-trim data-noescape>
+					meson setup builddir
+				</code></pre>
+				<aside class="notes">
+					Meson is the last third party program I'm gonna talk about. It's basically like cmake, but if you
+					ask me, it's better. Unlike cmake, meson does not have a make backend, you have to use ninja, xcode
+					or visual studio.
+				</aside>
+			</section>
+			<section>
+				<ul>
+					<li>The <code>Makefile</code>'s and <code>ninja.build</code>-file generated by cmake or meson
+						cannot
+						be
+						moved to another machine.
+					</li>
+					<li>Contain absolute paths to the source directory</li>
+					<li>Detection which optional dependency exits happens when <code>ninja.build</code> is generated
+					<li>You cannot commit these generated files to the git repo.</li>
+					<li>Anyone who wants to build $project needs not just make and ninja, but also cmake, meson and
+						python
+						installed.</li>
+					</li>
+				</ul>
+				<aside class="notes">
+					One thing to be keep in mind is that the output generated by cmake or meson is machine dependent. So
+					if you run cmake or
+					meson on one machine, then move the generated makefile or build.ninja file to another machine, your
+					build will fail. And this is very much by design and cannot be changed. Therefore, we cannot commit
+					the generated files to the git repo. I mean we can, but it wouldn't be very useful. We have to
+					commit the CMakeFiles.txt or meson.build files to the repo instead. Does that make sense to you?
+				</aside>
+			</section>
+			<section>
+				<h2>OpenFOAM, status quo</h2>
+				<pre class="bash"><code data-trim data-noescape>
+					cd openfoam
+					source etc/bashrc
+					./Allwmake
+					cd src/surfMesh
+					wmake
+				</code></pre>
+				<ul>
+					<li><code>source etc/bashrc</code> puts <code>/path/to/openfoam/wmake</code> in
+						<code>$PATH</code>
+					</li>
+					<li>
+						<code>which wmake</code> will print <code>/path/to/openfoam/wmake/wmake</code>
+					</li>
+					<li><code>./Allwmake</code> calls <code>wmake</code></li>
+				</ul>
+				<aside class="notes">
+					<p>
+						Now before I explain how the code works that I wrote, I want to explain how the code works that
+						I want to replace. I'm sure you already know that, but I still wanna explain it.
+					</p>
+					<p>
+						If you want to build openfoam you need to source etc/bashrc which will set some enviromental
+						variables. Then
+						there is a script in the repo called Allwmake, that you need to call which will, among other
+						things, go into each subdirectory and calls wmake. You can also go into any directory and
+						execute
+						wmake directly.
+					</p>
+				</aside>
+			</section>
+			<section>
+				<h2>OpenFOAM, status quo</h2>
+				<code>wmake</code> calls
+				<pre class="bash"><code data-trim data-noescape>
+					make -f /path/to/openfoam/wmake/makefiles/general
+				</code></pre>
+				<code>wmake/makefiles/general</code> contains
+				<pre class="makefile"><code data-trim data-noescape>
+					include $(OBJECTS_DIR)/options
+				</code></pre>
+				<code>src/surfMesh/Make/options</code>
+				<pre class="makefile"><code data-trim data-noescape>
+					EXE_INC = \
+						-I$(LIB_SRC)/fileFormats/lnInclude
+
+					LIB_LIBS = \
+						-lOpenFOAM \
+						-lfileFormats
+				</code></pre>
+				<code>src/surfMesh/Make/files</code>
+				<pre class="txt"><code data-trim data-noescape>
+					MeshedSurfaceAllocator/MeshedSurfaceIOAllocator.C
+					MeshedSurface/MeshedSurfaceCore.C
+					MeshedSurface/MeshedSurfaces.C
+
+					LIB = $(FOAM_LIBBIN)/libsurfMesh
+				</code></pre>
+				<aside class="notes">
+					<p>
+						wmake is a bash script that is written and maintained by the OpenFOAM project. And it will call
+						gnu
+						make with this extra flag here, which will make make use this file called "general" instead of
+						searching for a file
+						called
+						Makefile in the current directory.
+					</p>
+					<p>This "general" file includes Make/options of the directory you are building. So if you are
+						building src/surfMesh, it will include this path. It also somehow, through a mechanism I don't
+						completely understand, read Make/files.</p>
+					<p>
+						These two files contain information on what to build and how to build. And gnu make will then
+						call gcc with the appropriate options.
+					</p>
+				</aside>
+			</section>
+			<section>
+				<h2>OpenFOAM, what I did</h2>
+				<p>I wrote a python script.</p>
+				<ul>
+					<li>
+						Reads */Make/files and */Make/options
+					</li>
+					<li>
+						Writes meson.build files to the openfoam source tree
+					</li>
+				</ul>
+				<pre class="bash"><code data-trim data-noescape>
+					git clone https://develop.openfoam.com/Development/openfoam
+					git clone https://codeberg.org/Volker_Weissmann/foam_meson
+					cd foam_meson
+					./generate_meson_build.py ../openfoam
+					cd ../openfoam
+					meson setup some_path
+					cd some_path
+					ninja
+					meson devenv # Launches a subshell
+					cd ../tutorials/basic/laplacianFoam/flange
+					./Allrun
+				</code></pre>
+				<aside class="notes">
+					<p>
+						Now we come to the main part, where I explain my project. So what I did is that I wrote a python
+						script called generate_meson_build.py.
+						Now the very high level description of what my script does, is that it reads all of those
+						Make/files and Make/options files and writes meson.build files to the openfoam
+						source tree.
+					</p>
+					<p>
+						So If you want to run it, you can clone the official
+						openfoam
+						repository, and the repo of my script. Then run my script and pass the path to the openfoam
+						repository as a command line option.
+						After that you will find that there are meson.build files inside the openfoam directory. And you
+						can use "meson setup some_path" to generate a build.ninja file, then you can use ninja to
+						actually build openfoam. In this whole process we have never sourced etc/bashrc. Running "meson
+						devenv" sets some environmental variables, similar to sourcing etc/bashrc. In this subshell you
+						can run the openfoam software you just build and it should work. Note that after running
+						generate_meson_build.py we don't need or read the wmake related files like Make/files
+						Make/options or anything in the wmake folder.
+					</p>
+					<p>
+						Are there any question at this point?
+					</p>
+				</aside>
+			</section>
+			<section>
+				<h2>Dependencies and Installation</h2>
+				<h3>ninja</h3>
+				<p>
+				<ul>
+					<li>Packaged in every major distro</li>
+					<li>Also available as a single binary</li>
+					<li>Depends on libc, libm, libstdc++, gcc-libs</li>
+				</ul>
+				</p>
+				<h3>meson</h3>
+				<p>
+				<ul>
+					<li>We need 0.59.0 minimum (2021-07-18)</li>
+					<li>Packaged in every major distro</li>
+					<li>pip install meson</li>
+					<li>git clone https://github.com/mesonbuild/meson/</li>
+					<li>curl https://github.com/mesonbuild/meson/releases/download/0.59.0/meson-0.59.0.tar.gz</li>
+					<li>./meson.py</li>
+					<li>Newest meson version needs Python 3.7 or greater (2018-06-27)</li>
+					<li>Meson version 0.59.0 needs Python 3.6 or greater (2016-12-23)</li>
+				</ul>
+				</p>
+
+				<aside class="notes">
+					<p>
+						Now let's talk about a more practical topic. If you decide to adopt my proposal, everyone who
+						<b>builds</b> openfoam using meson needs to install ninja and meson. Ninja is quite
+						unproblematic. I don't even
+						know the minimum version we need, I never encountered a version that is too old.
+					</p>
+					<p>
+						For meson, we need 0.59 as a minimum. That version is 3 years old now. The simplest way to
+						install meson is through your package manager, but if your distro gives you a meson version that
+						is too old, you can install meson using pip, or either clone the repository or download the
+						tarball. Then you can just run the meson.py directly, without installing or anything.
+					</p>
+					<p>
+						Meson has a python dependency, but an old python installation will work just fine.
+					</p>
+				</aside>
+			</section>
+			<section>
+				<h2>Dependencies and Installation</h2>
+				<h3>foam_meson</h3>
+				<ul>
+					<li>
+						git clone https://codeberg.org/Volker_Weissmann/foam_meson
+					</li>
+					<li>
+						./generate_meson_build.py
+					</li>
+					<li>
+						Python 3.6 or newer
+					</li>
+					<li>
+						Make
+					</li>
+				</ul>
+				<pre class="Makefile"><code data-trim data-noescape>
+					print_stuff:
+						echo $(LIB_INC)
+						echo $(EXE_INC)
+						echo $(LIB_LIBS)
+						echo $(EXE_LIBS)
+				</code></pre>
+				<aside class="notes">
+					<p>
+						If anyone wants to run my script, the installation process is quite harmless, you just clone the
+						repo and run it. There is a python and a make dependency. The reason for the make dependency is
+						that parsing Make/options is kinda tricky. So we create a temporary file that contains this code
+						snippete here and the contents of Make/options. Then we run "make print_stuff" so make prints
+						out the variables that we are interested in.
+						If that confuses you, just ignore it it's not that important.
+					</p>
+				</aside>
+			</section>
+			<section>
+				<h2>Meson description</h2>
+				<ul>
+					<li>More high-level than Gnu Make</li>
+					<li>Much logic is moved from the Makefiles inside of meson itself instead of meson.build</li>
+					<li>
+						Meson wants to take control more than Gnu Make does
+					</li>
+					<li>Hacks are hard (e.g. lnInclude, .C. vs .cpp), escape hatches are limited</li>
+					<li>meson.build is not turing complete</li>
+					<li>Can't add your own abstraction layer</li>
+					<li>Way more opinionated than Gnu Make
+					</li>
+				</ul>
+				<aside class="notes">
+					One of the biggest differences between meson and make is that meson is much more high level. So a
+					lot of logic that is inside of your Makefile if you use Gnu Make is not inside of meson.build if you
+					use meson, but inside the source code of meson itself. This is both a good and a bad thing. One one
+					hand, it's a
+					good thing because it means meson knows more about your project than gnu make does, so meson can do
+					more stuff for you than gnu make can. Also, it means less work when writing
+					meson.build files. And you have less oportunity to mess up when writing meson.build files. And it's
+					easier to read meson.build files.
+					On the other hand, it's a bad thing since you are basically in a padded cell and meson thinks you
+					are an idiot. If you are searching for escape hatches to implement some weird hack since your
+					project might have different requirements than other projects you kind of have a problem. For
+					example, openfoam uses .C instead of .cpp for the C++ files and that required me to file a PR that
+					only got merged after some debate. Another example is how openfoam has this lnInclude symlinks. If
+					you interested in it I can talk more about it, but let's just say it took me really long to find a
+					solution and the solution is not very idiomatic code.
+					The language for meson.build is purposefully non-turing-complete and you can't really add your own
+					abstraction layers in meson files.
+					To summarize, my exprience is that meson is great if the project works the way meson thinks all
+					projects work,
+					but not so great if the project
+					works differently. In other words, meson is very opinionated.
+				</aside>
+			</section>
+			<section>
+				<h2>Why switch to meson</h2>
+				<p>
+					Let's say someone is somewhat familiar with meson, but completely new to openfoam. He will have a
+					very
+					easy time
+					doing
+					$thing with build. With $thing being e.g.
+				</p>
+				<ul>
+					<li>IDE Integration</li>
+					<li>Adding an optional dependency</li>
+					<li>...</li>
+				</ul>
+				<p>
+					The same cannot be said about gnu wmake.
+				</p>
+				<ul>
+					<li>Unlike wmake, Not the only project using meson</li>
+					<li>Googling "How to do $thing in meson" gives more results than "How to do $thing in wmake"</li>
+					<li>meson.build files are very easy to read</li>
+				</ul>
+				<aside class="notes">
+					Now why do I think that switching to meson is a good idea?
+					Probably the biggest advantage would be
+					that if someone is familiar with meson but completely new to openfoam, he knows how to do all kinds
+					of stuff with the build. Because while wmake is just used by the openfoam project, meson is used by
+					other projects as well and is well documented. Also the meson.build files are genuinly easy to read,
+					even for large real world projects. Which is an amazing accomplishment by the meson project.
+				</aside>
+			</section>
+			<section>
+				<h2>Why switch to meson</h2>
+				<ul>
+					<li><code>meson setup</code> generates <code>compilation_commands.json</code> -> good for IDE
+						support</li>
+					<li>If nothing has changed: <code>ninja</code> takes 2-5 seocnds, <code>./Allwmake</code> takes over
+						a minute</li>
+					<li>Meson is better at knowing what needs to be rebuild</li>
+					<li>Running <code>wclean</code> is sometimes required</li>
+					<li>If you change WM_COMPILE_OPTION, wmake does not rebuild anything</li>
+					<li>ninja can build a single binary</li>
+					<li>Meson errors out immediately if a dependency is missing</li>
+					<li>Meson can do out of tree builds</li>
+					<li>Make interleaves the output of multiple threads</li>
+					<li>Source code of meson seems good</li>
+				</ul>
+				<aside class="notes">
+					<p>
+						There are some other nice things about meson as well: If you run meson setup, which btw. only
+						takes
+						a minute or something like that, you get a compilation_commands.json which telsl your IDE how
+						Openfoam gets compiled and enables a better "Go To Definition" in your IDE.
+					</p>
+					<p>
+						Partial rebuils are faster with ninja than with Allwmake.
+					</p>
+					<p>
+						Meson is also better at knowing what needs to be rebuild. If a shared library changes,
+						dependents of that shared library are only rebuild if the exported symbols change.
+					</p>
+					<p>
+						Also, it happened to me a few times that I needed to manually call wclean, because wmake messed
+						it up. That wasn't a very nice experience. Something similar never happened to me with meson.
+					</p>
+					<p>If you change WM_COMPILE_OPTION wmake does not rebuild anything, while meson knows what to
+						rebuild if you change the equivalent option in wmake.</p>
+					<p>
+						If you tell ninja to just build one of the many openfoam binaries, it will build all libraries
+						that are needed for this openfoam binary, but no libraries that aren't needed. So if you just
+						need a few binaries, you don't need to do a full rebuild. Be aware that that advantage is
+						partially negated by the fact that nearly every binary depends on libOpenFOAM.so and that
+						library takes very long to build.
+					</p>
+					<p>If you try to build openfoam on a machine where a required dependency is missing, meson will
+						error out immediately, but wmake will start building and then after and hour or so complain.</p>
+					<p>
+						With meson you can do out of tree builds, so you can for example easily build the same source
+						code with different configurations at different paths. And you can build openfoam even if you
+						have no write permissions to the source directory.
+					</p>
+					<p>
+						One detail that annoys me about make is that if run make -j, every thread prints everything
+						immediately, so you see the output interleaved, which can be confusing. Ninja buffers the
+						outputs and then prints them without interleaving.
+					</p>
+					<p>I contributed to the meson project and I worked with the source code of meson, and I would say
+						that the quality of the source code is quite good. In general I would say that meson is better,
+						cleaner, less buggy, more modern and has more features than the alternatives.</p>
+				</aside>
+			</section>
+			<section>
+				<h2>About me</h2>
+				<ul>
+					<li>Master in Physics</li>
+					<li>Young (25) with lots of Energy</li>
+					<li>
+						Good at C++, Python, debugging
+					</li>
+					<li>
+						Know a lot about Linux, tooling and the C++ ecosystem
+					</li>
+					<li>
+						watch talks, read blogposts, talk with other hackers
+					</li>
+					<li>Limited knowledge about using OpenFOAM</li>
+					<li>Limited knowledge about OpenFOAM's source code</li>
+					<li>Next to no knowledge about OpenFOAM's organisational structure and development process</li>
+					<li>Next to no community connection (4th Openfoam Meeting)</li>
+					<li>Started as a proof of concept when I was young and stupid</li>
+					<li>No idea how to merge</li>
+				</ul>
+				<aside class="notes">
+					<p>
+						Now that I told you what's great about the project, we need to talk about the big problem this
+						problem has. And to understand that problem we need to talk about who I am. The good thing is
+						that I have a Master in Physics, I'm young and full of energy, I know enough about C++ or Python
+						or Linux or Build Systems, so if you show me a bug I can fix it even if its hard and I can
+						definitely plan and write software. But I have very little experience in using OpenFOAM or
+						developing OpenFOAM. And I have next to no knowledge about how OpenFOAM's organisations
+						structure and development process work. I'm unfortunately very much an outsider, for example
+						this is only my 4th openfoam meeting ever.
+					</p>
+					<p>
+						This whole project started when I was young and stupid and I learned about meson and I decided
+						to just try it out without any planning on how we could transition the project form wmake to
+						meson. It is a nice proof of concept, and it works, but I have no idea on how to manage such a
+						project. So I hope you can integrate me into the community, and teach me how project management
+						stuff
+						works.
+					</p>
+				</aside>
+			</section>
+			<section>
+				<h2>Important General principle in Programming</h2>
+				<p>
+					Let's say you have stuff in format/language $foo, you want format/language $boo, and you have a tool
+					that translates $foo to $bar.
+				</p>
+				<p>
+					Translate your stuff to $bar, use it, be happy
+				</p>
+				<p>What if you want to change something? You have 3 options</p>
+				<ol>
+					<li>Manually change it in the $foo-code and rerun the tool</li>
+					<li>Write a program that changes the $bar-code</li>
+					<li>Manually change the $bar-code</li>
+				</ol>
+				<p>If you do option 3, you cannot do option 1 ever again, at least not with manual labor or wiping your
+					changes!</p>
+				<aside class="notes">
+					<p>
+						Before we talk about how we could merge my changes upstream and transition from wmake to meson,
+						I
+						want to explain one thing that I think is important that everyone understands. So let me do that
+						very slowly because abstract concepts are often difficult to put into words and it's important
+						that
+						you 100% intuitively understand this.
+					</p>
+					<p>
+						So lets say you have some stuff in some format or programming language called $foo but you want
+						it in some other format or programming language called bar but you have tool that translates one
+						format or language into the other.
+						Then you translate your stuff and your done.
+					</p>
+					<p>
+						But what if sometime later you realize that your foo-code is not what it should be. Then you
+						have 3 options. You can either use your favorite text editor to update the foo-code and rerun
+						the tool. Or you can write a program that modifies the bar-code and run the progrem. Or you can
+						use your favorite text editor to manually change the bar-code. All of those work, but if you do
+						option 3 once, and you ever want to do option 1 again, you have a problem. Does everyone here
+						understand what the problem is?
+					</p>
+				</aside>
+			</section>
+			<section>
+				<h2>Example:</h2>
+				<p>
+					You have <code>main.c</code>, i.e. C-Code, but your CPU wants x86 assembly
+				</p>
+				<p>
+					gcc can translate C-Code to x86 assembly
+				</p>
+				<ol>
+					<li>Change <code>main.c</code> using a text-editor, then rerun-gcc
+					</li>
+					<li>E.g. strip</li>
+					<li>Changing the generated assembly, i.e. <code>main.s</code>, using a text-editor</li>
+				</ol>
+				<p>
+					If you do option 3, and rerun gcc it wipes your changes.
+				</p>
+				<aside class="notes">
+					So let's make an example. $foo is the C language and $bar is assembly code and the tool is the gcc.
+					During development you change main.c using a text editor then rerun gcc. Stripping the binary would
+					be an example of option 2. And you could also change the generated assembly using a text editor. But
+					if you do that, you cann't really touch main.c anymore. Do you understand that?
+				</aside>
+			</section>
+			<section>
+				<h2>In our case</h2>
+				<p>
+					We have many <code>Make/options</code> and <code>Make/files</code>
+				</p>
+				<p>
+					<code>generate_meson_build.py</code> reads that and outputs <code>meson.build</code> files
+				</p>
+				<p>Let's say we add another .C-file to openfoam. Two options:</p>
+				<ol>
+					<li value="3"><code>vim subdir/meson.build</code></li>
+					<li value="1"><code>vim subdir/Make/files</code> and re-run <code>generate_meson_build.py</code>
+					</li>
+				</ol>
+				<aside class="notes">
+					Now in our case, the $foo-format are the Make/options and Make/files, the $bar-format are the
+					meson.build files and the converting tool is my generate_meson_build.py. Now let's say that one day
+					we will add another .C-file to openfoam. Then we could either directly add the new file to
+					meson.build, that would be option 3 from the slides before, or we update Make/files and rerun
+					generate_meson_build.py that would be option 1 from the slides before. The option 2 from the slides
+					before probably won't be really practical. So when we discuss on how to transition openfoam from
+					wmake to meson, we need to decide when to use which of these two options, and keep in mind that if
+					you do option 3 and then you want to do option 1, you have to do some extra work. Now before you say
+					that option 1 is better, there is one thing you need to know.
+				</aside>
+			</section>
+			<section>
+				<h2>Heuristics in <code>generate_meson_build.py</code></h2>
+				<code>src/OSspecific/POSIX/Make/files</code>:
+				<pre class="txt"><code data-trim data-noescape>
+					#ifdef __sun__
+					printStack/dummyPrintStack.C
+					#else
+					printStack/printStack.C
+					#endif
+				</code></pre>
+				<code>src/OSspecific/POSIX/meson.build</code>
+				<pre class="meson"><code data-trim data-noescape>
+				if host_machine.system() == 'sunos'
+					srcfiles += files('printStack/dummyPrintStack.C')
+				else
+					srcfiles += files('printStack/printStack.C')
+				endif
+				</code></pre>
+				The first snippet exist as a string-literal in my script.
+				<aside class="notes">
+					It's that my generate_meson_build.py script is full of hardcoded heuristics. For example, my script
+					needs to
+					translate the first snippet into the second snippet. And the way we do that, is by having the first
+					snippet as a string literal and searching for this string literal.
+				</aside>
+			</section>
+			<section>
+				Let's say someone changes
+				<pre class="txt"><code data-trim data-noescape>
+					#ifdef __sun__
+					printStack/dummyPrintStack.C
+					#else
+					printStack/printStack.C
+					#endif
+				</code></pre>
+				to
+				<pre class="txt"><code data-trim data-noescape>
+					#ifndef __sun__
+					printStack/printStack.C
+					#else
+					printStack/dummyPrintStack.C
+					#endif
+				</code></pre>
+				<p><code>generate_meson_build.py</code> will crash!</p>
+				<p>You have to fix/change/adapt <code>generate_meson_build.py</code></p>
+				<aside class="notes">
+					So if you for example change it like this, you haven't change the meaning of the file, but my script
+					will crash since we're not able to parse arbitrary preprocessor statement. If you would want to make
+					this
+					change, then you would need add the new snippet as a string literal generate_meson_build.py.
+				</aside>
+			</section>
+			<section>
+				<p>Creating valid C-Code that gcc cannot correctly translate is hard.</p>
+				<p>Creating valid <code>Make/options</code> and <code>Make/files</code> that my script cannot correctly
+					translate is easy.</p>
+				<p>This will never change!</p>
+				<aside class="notes">
+					So in other words, the difference between the example with C and assembly code and our case is that
+					while it's very hard to find valid C-code that gcc cannot translate, it's almost trivial to create
+					valid Make/options and Make/files files that crashes my script. And this will never change.
+				</aside>
+			</section>
+			<section>
+				<p>Let's say we add another .C-file to openfoam. Two options:</p>
+				<ol>
+					<li value="3"><code>vim subdir/meson.build</code></li>
+					<li value="1"><code>vim subdir/Make/files</code> and re-run <code>generate_meson_build.py</code>
+					</li>
+				</ol>
+				<p>
+					Option 3 can be done by basically anyone. You will only rarely run into any issues. Basic
+					knowledge
+					of
+					openfoam and meson is enough,
+					no knowledge of my script is required.
+				</p>
+				<p>
+					Option 1 might result in you getting a stacktrace of my script
+					and
+					you need to read, understand and modify my script. Only I, or people who want to co-maintain my
+					script, or people that have me
+					on speeddial should run my script. (At least if we want users to have a nice experience.)
+				</p>
+				<p>The disadvantage of option 3 is that if you want both wmake and meson to keep working, you
+					need to update two files.</p>
+				<aside class="notes">
+					<p>
+						So Option 3 is easy to do, since meson.build files are easy to read and since meson and the
+						generated meson.build files have a good
+						architecture, are mostly bugfree and do not contain heuristics you will only rarely encounter
+						any issues. And you don't
+						need to run or read my
+						python script.
+					</p>
+					<p>
+						But option 1 is a bit more tricky. Since my script is essentially a heuristic, this heuristic
+						might break with openfoam updates and then you get a stacktrace of my script and you need to
+						work on it. So I can't be too far away from whoever runs this script.
+					</p>
+					<p>
+						On the other hand, the disadvantage of option 3 is that if we want both wmake and meson
+						to keep working for a certain transition period, we need to do twice the maintenance.
+					</p>
+				</aside>
+			</section>
+			<!-- <section>
+				<h2>Option 1: Direct Transition</h2>
+				<ul>
+					<li>One commit where we commit <code>meson.build</code> files and remove all <code>Make</code>
+						folders</li>
+					<li>Afterwards: Manual maintenance of <code>meson.build</code> files</li>
+					<li>v2406 no changes</li>
+					<li>v2412 only buildable with meson, not with wmake</li>
+					<li>Advantage: Simple</li>
+					<li>Disadvantage: If someone complains about a disadvantage of meson, they either have to go back to
+						v2406 or we have to fix it fast</li>
+				</ul>
+			</section>
+			<section>
+				<h2>Option 2: Chaining</h2>
+				<ul>
+					<li>Keep <code>Make</code> folders in the repo</li>
+				</ul>
+			</section> -->
+			<section>
+				<h2>Seperately compiled libraries</h2>
+				<p>Let's say you have dust that is hitting the wall and rebounding.</p>
+				<code>openfoam/src/lagrangian/intermediate/submodels/Kinematic/PatchInteractionModel/Rebound/Rebound.C</code>
+				<pre class="C++"><code data-trim data-noescape>
+				// Calculate motion relative to patch velocity
+				U -= Up;
+
+				scalar Un = U & nw;
+
+				if (Un > 0.0)
+				{
+					U -= UFactor_*2.0*Un*nw;
+				}
+
+				// Return velocity to global space
+				U += Up;
+				</code></pre>
+				Let's say you want to change the physics for that.
+				<aside class="notes">
+					My project is not feature complete yet, but most of the missing features are stuff I am confident I
+					can implement, so I only want to talk about one feature of wmake that will be very hard to match
+					with meson. I'm gonna explain the usecase of this feature with an example that happened to me when I
+					was working for the university. We simulated an airflow that carries dust-particles. And if those
+					dust-particles hit a wall they rebound. The code for the rebounding physics can be found in this
+					file here. But we wanted to implement a different rebounding physics. There are 3 options on how we
+					could do that with wmake.
+				</aside>
+			</section>
+			<section>
+				<h2>Option 1</h2>
+				<ol>
+					<li>
+						Download openfoam source code
+					</li>
+					<li>
+						Modify
+						<code>src/lagrangian/intermediate/submodels/Kinematic/PatchInteractionModel/Rebound/Rebound.C</code>
+					</li>
+					<li>
+						Build the modified openfoam
+					</li>
+				</ol>
+				<aside class="notes">
+					One option would be to download the openfoam source code, modify the code that handels the rebound
+					physics and then run Allwmake.
+				</aside>
+			</section>
+			<section>
+				<h2>Option 2</h2>
+				<ol>
+					<li>
+						Download openfoam source code
+					</li>
+					<li>
+						Go to
+						<code>src/lagrangian/intermediate/submodels/Kinematic/PatchInteractionModel</code>
+					</li>
+					<li>
+						Copy <code>Rebound</code> to <code>MyRebound</code>
+					</li>
+					<li>
+						Modify <code>MyRebound/Rebound.C</code>
+					</li>
+					<li>
+						Modify <code>Allwmake</code>
+					</li>
+					<li>
+						Build the modified openfoam
+					</li>
+					<li>
+						Adjust your case to use <code>MyRebound</code> instead of <code>Rebound</code>
+					</li>
+				</ol>
+				<aside class="notes">
+					Another option would be to download the openfoam source code, then copy and modify the Rebound
+					folder and modify Allwmake so that the new MyRebound folder also gets build. Then you have an
+					openfoam that has an additional PatchInteractionModel called MyRebound. Then you can use that model
+					in your case.
+				</aside>
+			</section>
+			<section>
+				<h2>Option 3</h2>
+				<ol>
+					<li>
+						Download openfoam source code and build it
+					</li>
+					<li>
+						Copy the <code>Rebound</code> folder from the openfoam source tree to <code>MyRebound</code>
+						<em>outside</em> of the openfoam source tree.
+					</li>
+					<li>
+						Build just the <code>MyRebound</code> folder
+					</li>
+					<li>
+						Adjust your case to use <code>MyRebound</code> instead of <code>Rebound</code>
+					</li>
+				</ol>
+				<ul>
+					<li>
+						Step 3 and 4 work without write permissions to the source tree, so openfoam source tree could be
+						shared between many users
+					</li>
+					<li>
+						Difficult to do something similar with meson
+					</li>
+				</ul>
+				<aside class="notes">
+					There is also a third option you could do. You start by downloading the openfoam source code and
+					building everything. Then you copy this Rebound folder somewhere <em>outside </em> the source tree.
+					With wmake, you can then build just that one folder and use it. I don't completely understand why
+					exactly the openfoam devs implemented this feature, but I think it has something to do with the fact
+					that you can do the last two steps without write permissions to the source tree. I have not worked
+					on implemented anything like that with meson, I could work doing that, but I would need to know more
+					about what the requirements and the usecases are.
+				</aside>
+			</section>
+			<section>
+				<h2>End of Presentation</h2>
+				<ul>
+					<li>
+						Discuss if you want to merge.
+					</li>
+					<li>
+						Discuss how we want to merge.
+					</li>
+					<li>
+						Discuss how we handle the "externally build" MyRebound feature.
+					</li>
+				</ul>
+				<p>Volker Weißmann<br>
+					volker.weissmann@gmx.de<br>
+					https://weissmann.pm<br>
+					No company or university, just too much time
+				</p>
+			</section>
+		</div>
+	</div>
+
+	<script src="dist/reveal.js"></script>
+	<script src="plugin/notes/notes.js"></script>
+	<script src="plugin/markdown/markdown.js"></script>
+	<script src="plugin/highlight/highlight.js"></script>
+	<script>
+		// More info about initialization & config:
+		// - https://revealjs.com/initialization/
+		// - https://revealjs.com/config/
+		Reveal.initialize({
+			hash: true,
+
+			// Learn about plugins: https://revealjs.com/plugins/
+			plugins: [RevealMarkdown, RevealHighlight, RevealNotes],
+
+			width: 1920,
+			height: 1400,
+		});
+	</script>
+</body>
+
+</html>
