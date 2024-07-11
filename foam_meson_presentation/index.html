@@ -249,6 +249,9 @@
 					<li>
 						Writes meson.build files to the openfoam source tree
 					</li>
+					<li>
+						Machine independent output
+					</li>
 				</ul>
 				<pre class="bash"><code data-trim data-noescape>
 					git clone https://develop.openfoam.com/Development/openfoam
@@ -269,7 +272,9 @@
 						script called generate_meson_build.py.
 						Now the very high level description of what my script does, is that it reads all of those
 						Make/files and Make/options files and writes meson.build files to the openfoam
-						source tree.
+						source tree. The output is machine independent, so if you run my script on different operating
+						systems you will get the same meson.build files, as long as the openfoam repository is
+						identical.
 					</p>
 					<p>
 						So If you want to run it, you can clone the official
