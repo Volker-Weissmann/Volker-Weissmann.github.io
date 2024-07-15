@@ -1,25 +1,4 @@
-<!doctype html>
-<html lang="en">
-
-	<head>
-		<meta charset="utf-8">
-
-		<title>reveal.js - Test Markdown</title>
-
-		<link rel="stylesheet" href="../dist/reveal.css">
-		<link rel="stylesheet" href="../node_modules/qunit/qunit/qunit.css">
-		<script src="../node_modules/qunit/qunit/qunit.js"></script>
-	</head>
-
-	<body style="overflow: auto;">
-
-		<div id="qunit"></div>
-		<div id="qunit-fixture"></div>
-
-		<div class="reveal deck1" style="display: none;">
-			<div class="slides">
-				<section data-markdown data-separator="^\n---\n$" data-separator-vertical="^\n--\n$">
-					<script type="text/template">
+<!doctype html><html lang=en> <head><meta charset=utf-8><title>reveal.js - Test Markdown</title><link rel=stylesheet href=../dist/reveal.css><link rel=stylesheet href=../node_modules/qunit/qunit/qunit.css><script src=../node_modules/qunit/qunit/qunit.js></script></head> <body style="overflow: auto;"> <div id=qunit></div> <div id=qunit-fixture></div> <div class="reveal deck1" style="display: none;"> <div class=slides> <section data-markdown data-separator=^\n---\n$ data-separator-vertical=^\n--\n$> <script type=text/template>
 						## Slide 1.1
 
 						--
@@ -29,25 +8,7 @@
 						---
 
 						## Slide 2
-					</script>
-				</section>
-			</div>
-		</div>
-
-		<div class="reveal deck2" style="display: none;">
-			<div class="slides">
-				<section data-markdown="simple.md" data-separator="^\r?\n\r?\n\r?\n" data-separator-vertical="^\r?\n\r?\n"></section>
-			</div>
-		</div>
-
-		<div class="reveal deck3" style="display: none;">
-			<div class="slides">
-				<section 	data-markdown data-separator="^\n\n\n"
-									data-separator-vertical="^\n\n"
-									data-separator-notes="^Note:"
-									data-attributes="--\s(.*?)$"
-									data-charset="utf-8">
-					<script type="text/template">
+					</script> </section> </div> </div> <div class="reveal deck2" style="display: none;"> <div class=slides> <section data-markdown=simple.md data-separator=^\r?\n\r?\n\r?\n data-separator-vertical=^\r?\n\r?\n></section> </div> </div> <div class="reveal deck3" style="display: none;"> <div class=slides> <section data-markdown data-separator=^\n\n\n data-separator-vertical=^\n\n data-separator-notes=^Note: data-attributes=--\s(.*?)$ data-charset=utf-8> <script type=text/template>
 						# Test attributes in Markdown
 						## Slide 1
 
@@ -72,14 +33,7 @@
 
 
 						## Slide 4
-					</script>
-				</section>
-
-				<section 	data-markdown data-separator="^\n\n\n"
-									data-separator-vertical="^\n\n"
-									data-separator-notes="^Note:"
-									data-charset="utf-8">
-					<script type="text/template">
+					</script> </section> <section data-markdown data-separator=^\n\n\n data-separator-vertical=^\n\n data-separator-notes=^Note: data-charset=utf-8> <script type=text/template>
 						# Test attributes in Markdown with default separator
 						## Slide 1 Def
 
@@ -104,52 +58,24 @@
 
 
 						## Slide 4
-					</script>
-				</section>
-
-				<section data-markdown>
-					<script type="text/template">
+					</script> </section> <section data-markdown> <script type=text/template>
 						<!-- .slide: data-background="#ff0000" -->
 						## Hello world
-					</script>
-				</section>
-
-				<section data-markdown>
-					<script type="text/template">
+					</script> </section> <section data-markdown> <script type=text/template>
 						## Hello world
 						<!-- .slide: data-background="#ff0000" -->
-					</script>
-				</section>
-
-				<section data-markdown>
-					<script type="text/template">
+					</script> </section> <section data-markdown> <script type=text/template>
 						## Hello world
 
 						Test
 						<!-- .slide: data-background="#ff0000" -->
 
 						More Test
-					</script>
-				</section>
-			</div>
-		</div>
-
-		<div class="reveal deck4" style="display: none;">
-			<div class="slides">
-				<section data-markdown>
-					<script type="text/template">
+					</script> </section> </div> </div> <div class="reveal deck4" style="display: none;"> <div class=slides> <section data-markdown> <script type=text/template>
 						## Testing Markdown Options
 
 						This "slide" should contain 'smart' quotes.
-					</script>
-				</section>
-			</div>
-		</div>
-
-		<div class="reveal deck5" style="display: none;">
-			<div class="slides">
-				<section data-markdown data-separator="^\n---\n$" data-separator-vertical="^\n--\n$" data-element-attributes="{_\s*?([^}]+?)}">>
-					<script type="text/template">
+					</script> </section> </div> </div> <div class="reveal deck5" style="display: none;"> <div class=slides> <section data-markdown data-separator=^\n---\n$ data-separator-vertical=^\n--\n$ data-element-attributes={_\s*?([^}]+?)}>> <script type=text/template>
 						## Slide 1.1
 						<!-- {_class="fragment fade-out" data-fragment-index="1"} -->
 
@@ -194,16 +120,7 @@
 
 						![Example Picture](examples/assets/image2.png) <!-- {_class="reveal stretch"} -->
 
-					</script>
-				</section>
-
-
-
-				<section 	data-markdown data-separator="^\n\n\n"
-									data-separator-vertical="^\n\n"
-									data-separator-notes="^Note:"
-									data-charset="utf-8">
-					<script type="text/template">
+					</script> </section> <section data-markdown data-separator=^\n\n\n data-separator-vertical=^\n\n data-separator-notes=^Note: data-charset=utf-8> <script type=text/template>
 						# Test attributes in Markdown with default separator
 						## Slide 1 Def <!-- .element: class="fragment highlight-red" data-fragment-index="1" -->
 
@@ -211,110 +128,61 @@
 						## Slide 2 Def
 						<!-- .element: class="fragment highlight-red" -->
 
-					</script>
-				</section>
-
-				<section data-markdown>
-				  <script type="text/template">
+					</script> </section> <section data-markdown> <script type=text/template>
 					## Hello world
 					A paragraph
 					<!-- .element: class="fragment highlight-blue" -->
-				  </script>
-				</section>
-
-				<section data-markdown>
-				  <script type="text/template">
+				  </script> </section> <section data-markdown> <script type=text/template>
 					## Hello world
 
 					Multiple  
 					Line
 					<!-- .element: class="fragment highlight-blue" -->
-				  </script>
-				</section>
-
-				<section data-markdown>
-				  <script type="text/template">
+				  </script> </section> <section data-markdown> <script type=text/template>
 					## Hello world
 
 					Test<!-- .element: class="fragment highlight-blue" -->
 
 					More Test
-				  </script>
-				</section>
-			</div>
-		</div>
-
-		<div class="reveal deck6" style="display: block;">
-			<div class="slides">
-				<section data-markdown class="defaults">
-					<script type="text/template">
+				  </script> </section> </div> </div> <div class="reveal deck6" style="display: block;"> <div class=slides> <section data-markdown class=defaults> <script type=text/template>
 						```
 						code
 						```
-					</script>
-				</section>
-				<section data-markdown class="with-language">
-					<script type="text/template">
+					</script> </section> <section data-markdown class=with-language> <script type=text/template>
 						```javascript
 						code
 						```
-					</script>
-				</section>
-				<section data-markdown class="with-line-numbers">
-					<script type="text/template">
+					</script> </section> <section data-markdown class=with-line-numbers> <script type=text/template>
 						```[]
 						code
 						```
-					</script>
-				</section>
-				<section data-markdown class="with-line-highlights">
-					<script type="text/template">
+					</script> </section> <section data-markdown class=with-line-highlights> <script type=text/template>
 						```[1,2,3]
 						code
 						```
-					</script>
-				</section>
-				<section data-markdown class="with-offset">
-					<script type="text/template">
+					</script> </section> <section data-markdown class=with-offset> <script type=text/template>
 						```[123:]
 						code
 						```
-					</script>
-				</section>
-				<section data-markdown class="with-line-highlights-and-lanugage">
-					<script type="text/template">
+					</script> </section> <section data-markdown class=with-line-highlights-and-lanugage> <script type=text/template>
 						```javascript [1,2,3]
 						code
 						```
-					</script>
-				</section>
-				<section data-markdown class="with-line-highlights-offset-and-lanugage">
-					<script type="text/template">
+					</script> </section> <section data-markdown class=with-line-highlights-offset-and-lanugage> <script type=text/template>
 						```javascript [456: 3,4,5]
 						code
 						```
-					</script>
-				</section>
-				<section data-markdown class="with-line-offset-and-lanugage">
-					<script type="text/template">
+					</script> </section> <section data-markdown class=with-line-offset-and-lanugage> <script type=text/template>
 						```javascript [756:]
 						code
 						```
-					</script>
-				</section>
-				<section data-markdown class="with-code-in-fragment">
-					<script type="text/template">
+					</script> </section> <section data-markdown class=with-code-in-fragment> <script type=text/template>
 					```js
 					foo.bar();
 					```
 
 					<!-- .element: class="fragment" -->
-					</script>
-				</section>
-			</div>
-		</div>
-
-		<script type="module">
+					</script> </section> </div> </div> <script type=module>
 			import Reveal from '../dist/reveal.esm.js'
 			import Markdown from '../plugin/markdown/markdown.esm.js'
 			import Highlight from '../plugin/highlight/highlight.esm.js'
@@ -510,7 +378,4 @@
 			deck4.initialize();
 			deck5.initialize();
 			deck6.initialize();
-		</script>
-
-	</body>
-</html>
+		</script> </body> </html> 

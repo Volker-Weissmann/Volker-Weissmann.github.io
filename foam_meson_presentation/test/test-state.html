@@ -1,43 +1,4 @@
-<!doctype html>
-<html lang="en">
-
-	<head>
-		<meta charset="utf-8">
-
-		<title>reveal.js - Test State</title>
-
-		<link rel="stylesheet" href="../dist/reveal.css">
-		<link rel="stylesheet" href="../node_modules/qunit/qunit/qunit.css">
-		<script src="../node_modules/qunit/qunit/qunit.js"></script>
-	</head>
-
-	<body style="overflow: auto;">
-
-		<div id="qunit"></div>
-		<div id="qunit-fixture"></div>
-
-		<div class="reveal" style="display: none;">
-
-			<div class="slides">
-
-				<section>No state</section>
-				<section id="slide2" data-state="state1">State 1</section>
-				<section data-state="state1">State 1</section>
-				<section data-state="state2">State 2</section>
-				<section>
-					<section>No state</section>
-					<section data-state="state1">State 1</section>
-					<section data-state="state3">State 3</section>
-					<section>No state</section>
-				</section>
-				<section>No state</section>
-
-			</div>
-
-		</div>
-
-		<script src="../dist/reveal.js"></script>
-		<script>
+<!doctype html><html lang=en> <head><meta charset=utf-8><title>reveal.js - Test State</title><link rel=stylesheet href=../dist/reveal.css><link rel=stylesheet href=../node_modules/qunit/qunit/qunit.css><script src=../node_modules/qunit/qunit/qunit.js></script></head> <body style="overflow: auto;"> <div id=qunit></div> <div id=qunit-fixture></div> <div class=reveal style="display: none;"> <div class=slides> <section>No state</section> <section id=slide2 data-state=state1>State 1</section> <section data-state=state1>State 1</section> <section data-state=state2>State 2</section> <section> <section>No state</section> <section data-state=state1>State 1</section> <section data-state=state3>State 3</section> <section>No state</section> </section> <section>No state</section> </div> </div> <script src=../dist/reveal.js></script> <script>
 
 			Reveal.initialize();
 
@@ -128,7 +89,4 @@
 				Reveal.off( 'state1', _onEvent );
 			});
 
-		</script>
-
-	</body>
-</html>
+		</script> </body> </html> 

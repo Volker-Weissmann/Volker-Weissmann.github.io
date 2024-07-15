@@ -1,38 +1,4 @@
-<!doctype html>
-<html lang="en">
-
-	<head>
-		<meta charset="utf-8">
-
-		<title>reveal.js - Test Iframes</title>
-
-		<link rel="stylesheet" href="../dist/reveal.css">
-		<link rel="stylesheet" href="../node_modules/qunit/qunit/qunit.css">
-		<script src="../node_modules/qunit/qunit/qunit.js"></script>
-	</head>
-
-	<body style="overflow: auto;">
-
-		<div id="qunit"></div>
-		<div id="qunit-fixture"></div>
-
-		<div class="reveal" style="display: none;">
-
-			<div class="slides">
-
-				<section>1</section>
-				<section>2</section>
-				<section>
-					<iframe class="default-iframe" data-src="#"></iframe>
-					<iframe class="preload-iframe" data-src="#" data-preload></iframe>
-				</section>
-
-			</div>
-
-		</div>
-
-		<script src="../dist/reveal.js"></script>
-		<script>
+<!doctype html><html lang=en> <head><meta charset=utf-8><title>reveal.js - Test Iframes</title><link rel=stylesheet href=../dist/reveal.css><link rel=stylesheet href=../node_modules/qunit/qunit/qunit.css><script src=../node_modules/qunit/qunit/qunit.js></script></head> <body style="overflow: auto;"> <div id=qunit></div> <div id=qunit-fixture></div> <div class=reveal style="display: none;"> <div class=slides> <section>1</section> <section>2</section> <section> <iframe class=default-iframe data-src=#></iframe> <iframe class=preload-iframe data-src=# data-preload></iframe> </section> </div> </div> <script src=../dist/reveal.js></script> <script>
 
 			QUnit.config.testTimeout = 30000;
 
@@ -98,7 +64,4 @@
 				});
 
 			} );
-		</script>
-
-	</body>
-</html>
+		</script> </body> </html> 
